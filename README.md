@@ -23,6 +23,12 @@ first figure would make the backfill 256 times longer.
   wants (RFC-0011), served from events rather than the gateway. **Verified against the network
   subgraph: 13,301 active allocations on both sides, exact.** 245,372 allocations total, 232,505
   carrying a POI.
+- **`lodestar_epochs`** / **`epoch_boundaries`** - per-epoch rewards, fees and signal. Max epoch
+  **1,356, matching the network subgraph exactly**. Boundaries are *observed* from the `currentEpoch`
+  the events themselves carry, not computed - see the header of `views/50-lodestar-epochs.sql` for
+  why computing it is wrong by a factor of 48 on Arbitrum.
+- **`lodestar_disputes`** - the dispute lifecycle, with `Undecided` falling out of a LEFT JOIN rather
+  than needing a status on chain.
 - **`port_queue`** - deployments with net signal and no open allocation, ranked. No threshold applied;
   the caller filters (see below).
 - **`deployment_signal`** - net curation signal per deployment, with GRT paid in and curator count.

@@ -9,29 +9,11 @@ rpc_urls = [
 schema_version = 1
 block_timestamps = true
 
-# The port queue (docs/launch/port-queue-nest.md in nuthatch): which subgraph deployments have
-# curation signal staked on them and no indexer currently serving them. Two contracts, because
-# allocations and signal both key on `subgraphDeploymentId` and a nuthatch query is per-nest scoped -
-# the join has to live inside one nest or it is not a join.
-
 [[contracts]]
 alias = "subgraph_service"
 address = "0xb2bb92d0de618878e438b55d5846cfecd9301105"
-# Verified two ways: binary search on eth_getCode against an archive RPC, and `nuthatch init`'s own
-# detection, which agreed to the block. 2025-11-06 19:00 UTC.
 start_block = 397492865
 abi = "abis/subgraph-service.json"
-# The allocation lifecycle only. The contract emits 31 events; the rest (payments, service-provider
-# registration, parameter setters) are real data we deliberately do not carry here, per RFC-0011's
-# precedent of keeping a nest's allowlist to the question it answers.
-#
-# `LegacyAllocationMigrated` is included because it is *removed* by the upgrade staged on 2026-07-23
-# and only ever fired during the Horizon migration - it is history that will never be re-emitted, so
-# the current ABI is the one that decodes it. Vendor the current ABI, never the pending one.
-# `IndexingRewardsCollected` and `QueryFeesCollected` were added 2026-08-19 for Lodestar's
-# `ingest-allocations` route (RFC-0011): the POI lives on the rewards event rather than on
-# `AllocationClosed`, and the per-allocation query fees have no other source. Both are on this
-# contract already, so this is an allowlist edit rather than new indexing surface.
 events = [
     "AllocationCreated",
     "AllocationClosed",
@@ -44,10 +26,37 @@ events = [
 [[contracts]]
 alias = "curation"
 address = "0x22d78fb4bc72e191c765807f8891b5e1785c8014"
-# Binary search on eth_getCode; 2022-11-30 13:39 UTC, 182 blocks from graph-staking-nest's pinned
-# 42449585, same day. Signal is cumulative, so current signal needs every event since the L2
-# deployment - this is the expensive half of the backfill and it cannot be shortened without
-# producing wrong balances.
 start_block = 42449403
 abi = "abis/curation.json"
-events = ["Signalled", "Burned"]
+events = [
+    "Signalled",
+    "Burned",
+]
+
+[[contracts]]
+alias = "epochs"
+address = "0x5a843145c43d328b9bb7a4401d94918f131bb281"
+start_block = 42449227
+abi = "abis/epochs.json"
+# `EpochRun` is sparse (it fires only when somebody calls runEpoch) and carries no block range, so
+# epoch *boundaries* are computed from `EpochLengthUpdate` plus arithmetic rather than read off an
+# event. Both are needed: the length changes, and the run markers.
+events = ["EpochRun", "EpochLengthUpdate"]
+
+[[contracts]]
+alias = "disputes"
+address = "0x2fe023a575449acb698648ed21276293fa176f96"
+start_block = 397492858
+abi = "abis/disputes.json"
+# The dispute lifecycle only. The contract emits 17 events; the parameter setters and ownership
+# plumbing are real data we deliberately do not carry here.
+events = [
+    "IndexingDisputeCreated",
+    "QueryDisputeCreated",
+    "LegacyDisputeCreated",
+    "DisputeAccepted",
+    "DisputeRejected",
+    "DisputeDrawn",
+    "DisputeCancelled",
+    "DisputeLinked",
+]

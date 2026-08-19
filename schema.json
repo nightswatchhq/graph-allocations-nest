@@ -1,5 +1,5 @@
 {
-  "registry_hash": "0x281d4e87e7febfb5a8d12a0c4b19a94c1f9fbd2f59b9915eb83f7ce382aec413",
+  "registry_hash": "0xd63298ccabf5077b028e90aefbe47d5c44f8ec40d4fdc66b72766e8b120e0bf1",
   "tables": [
     {
       "alias": "curation",
@@ -154,6 +154,776 @@
       "event": "Signalled(address,bytes32,uint256,uint256,uint256)",
       "table": "curation__signalled",
       "topic0": "0xb7bf5f4e5b23ef992df9875ecea572620d18dab0c1a5486a9b695d20d9ec50cf"
+    },
+    {
+      "alias": "disputes",
+      "columns": [
+        {
+          "indexed": false,
+          "name": "block_number",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "block_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "block_timestamp",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "tx_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "log_index",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "address",
+          "sol_type": "implicit",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "_seq",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": true,
+          "name": "disputeId",
+          "sol_type": "bytes32",
+          "storage": "fixed_bytes"
+        },
+        {
+          "indexed": true,
+          "name": "indexer",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": true,
+          "name": "fisherman",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "tokens",
+          "sol_type": "uint256",
+          "storage": "word32"
+        }
+      ],
+      "event": "DisputeAccepted(bytes32,address,address,uint256)",
+      "table": "disputes__dispute_accepted",
+      "topic0": "0x6d800aaaf64b9a1f321dcd63da04369d33d8a0d49ad0fbba085aab4a98bf31c4"
+    },
+    {
+      "alias": "disputes",
+      "columns": [
+        {
+          "indexed": false,
+          "name": "block_number",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "block_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "block_timestamp",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "tx_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "log_index",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "address",
+          "sol_type": "implicit",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "_seq",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": true,
+          "name": "disputeId",
+          "sol_type": "bytes32",
+          "storage": "fixed_bytes"
+        },
+        {
+          "indexed": true,
+          "name": "indexer",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": true,
+          "name": "fisherman",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "tokens",
+          "sol_type": "uint256",
+          "storage": "word32"
+        }
+      ],
+      "event": "DisputeCancelled(bytes32,address,address,uint256)",
+      "table": "disputes__dispute_cancelled",
+      "topic0": "0x223103f8eb52e5f43a75655152acd882a605d70df57a5c0fefd30f516b1756d2"
+    },
+    {
+      "alias": "disputes",
+      "columns": [
+        {
+          "indexed": false,
+          "name": "block_number",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "block_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "block_timestamp",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "tx_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "log_index",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "address",
+          "sol_type": "implicit",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "_seq",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": true,
+          "name": "disputeId",
+          "sol_type": "bytes32",
+          "storage": "fixed_bytes"
+        },
+        {
+          "indexed": true,
+          "name": "indexer",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": true,
+          "name": "fisherman",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "tokens",
+          "sol_type": "uint256",
+          "storage": "word32"
+        }
+      ],
+      "event": "DisputeDrawn(bytes32,address,address,uint256)",
+      "table": "disputes__dispute_drawn",
+      "topic0": "0xf0912efb86ea1d65a17d64d48393cdb1ca0ea5220dd2bbe438621199d30955b7"
+    },
+    {
+      "alias": "disputes",
+      "columns": [
+        {
+          "indexed": false,
+          "name": "block_number",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "block_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "block_timestamp",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "tx_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "log_index",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "address",
+          "sol_type": "implicit",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "_seq",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": true,
+          "name": "disputeId1",
+          "sol_type": "bytes32",
+          "storage": "fixed_bytes"
+        },
+        {
+          "indexed": true,
+          "name": "disputeId2",
+          "sol_type": "bytes32",
+          "storage": "fixed_bytes"
+        }
+      ],
+      "event": "DisputeLinked(bytes32,bytes32)",
+      "table": "disputes__dispute_linked",
+      "topic0": "0xfec135a4cf8e5c6e13dea23be058bf03a8bf8f1f6fb0a021b0a5aeddfba81407"
+    },
+    {
+      "alias": "disputes",
+      "columns": [
+        {
+          "indexed": false,
+          "name": "block_number",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "block_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "block_timestamp",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "tx_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "log_index",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "address",
+          "sol_type": "implicit",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "_seq",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": true,
+          "name": "disputeId",
+          "sol_type": "bytes32",
+          "storage": "fixed_bytes"
+        },
+        {
+          "indexed": true,
+          "name": "indexer",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": true,
+          "name": "fisherman",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "tokens",
+          "sol_type": "uint256",
+          "storage": "word32"
+        }
+      ],
+      "event": "DisputeRejected(bytes32,address,address,uint256)",
+      "table": "disputes__dispute_rejected",
+      "topic0": "0x2226ebd23625a7938fb786df2248bd171d2e6ad70cb2b654ea1be830ca17224d"
+    },
+    {
+      "alias": "disputes",
+      "columns": [
+        {
+          "indexed": false,
+          "name": "block_number",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "block_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "block_timestamp",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "tx_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "log_index",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "address",
+          "sol_type": "implicit",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "_seq",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": true,
+          "name": "disputeId",
+          "sol_type": "bytes32",
+          "storage": "fixed_bytes"
+        },
+        {
+          "indexed": true,
+          "name": "indexer",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": true,
+          "name": "fisherman",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "tokens",
+          "sol_type": "uint256",
+          "storage": "word32"
+        },
+        {
+          "indexed": false,
+          "name": "allocationId",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "poi",
+          "sol_type": "bytes32",
+          "storage": "fixed_bytes"
+        },
+        {
+          "indexed": false,
+          "name": "blockNumber",
+          "sol_type": "uint256",
+          "storage": "word32"
+        },
+        {
+          "indexed": false,
+          "name": "stakeSnapshot",
+          "sol_type": "uint256",
+          "storage": "word32"
+        },
+        {
+          "indexed": false,
+          "name": "cancellableAt",
+          "sol_type": "uint256",
+          "storage": "word32"
+        }
+      ],
+      "event": "IndexingDisputeCreated(bytes32,address,address,uint256,address,bytes32,uint256,uint256,uint256)",
+      "table": "disputes__indexing_dispute_created",
+      "topic0": "0xb84691e86090d2bd1cb788cfe1efa80f01c0003f443474ccc841c70e020d3da0"
+    },
+    {
+      "alias": "disputes",
+      "columns": [
+        {
+          "indexed": false,
+          "name": "block_number",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "block_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "block_timestamp",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "tx_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "log_index",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "address",
+          "sol_type": "implicit",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "_seq",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": true,
+          "name": "disputeId",
+          "sol_type": "bytes32",
+          "storage": "fixed_bytes"
+        },
+        {
+          "indexed": true,
+          "name": "indexer",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": true,
+          "name": "fisherman",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "allocationId",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "tokensSlash",
+          "sol_type": "uint256",
+          "storage": "word32"
+        },
+        {
+          "indexed": false,
+          "name": "tokensRewards",
+          "sol_type": "uint256",
+          "storage": "word32"
+        }
+      ],
+      "event": "LegacyDisputeCreated(bytes32,address,address,address,uint256,uint256)",
+      "table": "disputes__legacy_dispute_created",
+      "topic0": "0x587a1fc7e80e653a2ab7f63f98c080f5818b8cedcfd1374590c8c786290ed031"
+    },
+    {
+      "alias": "disputes",
+      "columns": [
+        {
+          "indexed": false,
+          "name": "block_number",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "block_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "block_timestamp",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "tx_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "log_index",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "address",
+          "sol_type": "implicit",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "_seq",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": true,
+          "name": "disputeId",
+          "sol_type": "bytes32",
+          "storage": "fixed_bytes"
+        },
+        {
+          "indexed": true,
+          "name": "indexer",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": true,
+          "name": "fisherman",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "tokens",
+          "sol_type": "uint256",
+          "storage": "word32"
+        },
+        {
+          "indexed": false,
+          "name": "subgraphDeploymentId",
+          "sol_type": "bytes32",
+          "storage": "fixed_bytes"
+        },
+        {
+          "indexed": false,
+          "name": "attestation",
+          "sol_type": "bytes",
+          "storage": "bytes"
+        },
+        {
+          "indexed": false,
+          "name": "stakeSnapshot",
+          "sol_type": "uint256",
+          "storage": "word32"
+        },
+        {
+          "indexed": false,
+          "name": "cancellableAt",
+          "sol_type": "uint256",
+          "storage": "word32"
+        }
+      ],
+      "event": "QueryDisputeCreated(bytes32,address,address,uint256,bytes32,bytes,uint256,uint256)",
+      "table": "disputes__query_dispute_created",
+      "topic0": "0xfb70faf7306b83c2cec6d8c1627baad892cb79968a02cc0353174499ecfd8b35"
+    },
+    {
+      "alias": "epochs",
+      "columns": [
+        {
+          "indexed": false,
+          "name": "block_number",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "block_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "block_timestamp",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "tx_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "log_index",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "address",
+          "sol_type": "implicit",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "_seq",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": true,
+          "name": "epoch",
+          "sol_type": "uint256",
+          "storage": "word32"
+        },
+        {
+          "indexed": false,
+          "name": "epochLength",
+          "sol_type": "uint256",
+          "storage": "word32"
+        }
+      ],
+      "event": "EpochLengthUpdate(uint256,uint256)",
+      "table": "epochs__epoch_length_update",
+      "topic0": "0x25ddd6f00038d5eac0051df83c6084f140a01586f092e2728d1ed781c9ce2441"
+    },
+    {
+      "alias": "epochs",
+      "columns": [
+        {
+          "indexed": false,
+          "name": "block_number",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "block_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "block_timestamp",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "tx_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "log_index",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "address",
+          "sol_type": "implicit",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "_seq",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": true,
+          "name": "epoch",
+          "sol_type": "uint256",
+          "storage": "word32"
+        },
+        {
+          "indexed": false,
+          "name": "caller",
+          "sol_type": "address",
+          "storage": "address"
+        }
+      ],
+      "event": "EpochRun(uint256,address)",
+      "table": "epochs__epoch_run",
+      "topic0": "0x666a37ccc682d20f8c51c5f6fd835cbadbcaaf09921e076282446e42d7264e3e"
     },
     {
       "alias": "subgraph_service",

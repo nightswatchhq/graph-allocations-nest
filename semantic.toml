@@ -50,6 +50,177 @@ overflows_dec = [
     "curationTax",
 ]
 
+[table.disputes__dispute_accepted]
+description = "`DisputeAccepted(bytes32,address,address,uint256)` events emitted by the `disputes` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per DisputeAccepted(bytes32,address,address,uint256) event"
+
+[table.disputes__dispute_accepted.columns]
+disputeId = "The `disputeId` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+fisherman = "The `fisherman` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+indexer = "The `indexer` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+tokens = "The `tokens` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.disputes__dispute_accepted.footguns]
+big_ints = ["tokens"]
+overflows_dec = ["tokens"]
+
+[table.disputes__dispute_cancelled]
+description = "`DisputeCancelled(bytes32,address,address,uint256)` events emitted by the `disputes` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per DisputeCancelled(bytes32,address,address,uint256) event"
+
+[table.disputes__dispute_cancelled.columns]
+disputeId = "The `disputeId` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+fisherman = "The `fisherman` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+indexer = "The `indexer` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+tokens = "The `tokens` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.disputes__dispute_cancelled.footguns]
+big_ints = ["tokens"]
+overflows_dec = ["tokens"]
+
+[table.disputes__dispute_drawn]
+description = "`DisputeDrawn(bytes32,address,address,uint256)` events emitted by the `disputes` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per DisputeDrawn(bytes32,address,address,uint256) event"
+
+[table.disputes__dispute_drawn.columns]
+disputeId = "The `disputeId` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+fisherman = "The `fisherman` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+indexer = "The `indexer` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+tokens = "The `tokens` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.disputes__dispute_drawn.footguns]
+big_ints = ["tokens"]
+overflows_dec = ["tokens"]
+
+[table.disputes__dispute_linked]
+description = "`DisputeLinked(bytes32,bytes32)` events emitted by the `disputes` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per DisputeLinked(bytes32,bytes32) event"
+
+[table.disputes__dispute_linked.columns]
+disputeId1 = "The `disputeId1` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+disputeId2 = "The `disputeId2` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.disputes__dispute_rejected]
+description = "`DisputeRejected(bytes32,address,address,uint256)` events emitted by the `disputes` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per DisputeRejected(bytes32,address,address,uint256) event"
+
+[table.disputes__dispute_rejected.columns]
+disputeId = "The `disputeId` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+fisherman = "The `fisherman` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+indexer = "The `indexer` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+tokens = "The `tokens` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.disputes__dispute_rejected.footguns]
+big_ints = ["tokens"]
+overflows_dec = ["tokens"]
+
+[table.disputes__indexing_dispute_created]
+description = "`IndexingDisputeCreated(bytes32,address,address,uint256,address,bytes32,uint256,uint256,uint256)` events emitted by the `disputes` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per IndexingDisputeCreated(bytes32,address,address,uint256,address,bytes32,uint256,uint256,uint256) event"
+
+[table.disputes__indexing_dispute_created.columns]
+allocationId = "The `allocationId` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+blockNumber = "The `blockNumber` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+cancellableAt = "The `cancellableAt` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+disputeId = "The `disputeId` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+fisherman = "The `fisherman` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+indexer = "The `indexer` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+poi = "The `poi` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+stakeSnapshot = "The `stakeSnapshot` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+tokens = "The `tokens` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.disputes__indexing_dispute_created.footguns]
+big_ints = [
+    "tokens",
+    "blockNumber",
+    "stakeSnapshot",
+    "cancellableAt",
+]
+overflows_dec = [
+    "tokens",
+    "blockNumber",
+    "stakeSnapshot",
+    "cancellableAt",
+]
+
+[table.disputes__legacy_dispute_created]
+description = "`LegacyDisputeCreated(bytes32,address,address,address,uint256,uint256)` events emitted by the `disputes` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per LegacyDisputeCreated(bytes32,address,address,address,uint256,uint256) event"
+
+[table.disputes__legacy_dispute_created.columns]
+allocationId = "The `allocationId` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+disputeId = "The `disputeId` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+fisherman = "The `fisherman` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+indexer = "The `indexer` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+tokensRewards = "The `tokensRewards` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+tokensSlash = "The `tokensSlash` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.disputes__legacy_dispute_created.footguns]
+big_ints = [
+    "tokensSlash",
+    "tokensRewards",
+]
+overflows_dec = [
+    "tokensSlash",
+    "tokensRewards",
+]
+
+[table.disputes__query_dispute_created]
+description = "`QueryDisputeCreated(bytes32,address,address,uint256,bytes32,bytes,uint256,uint256)` events emitted by the `disputes` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per QueryDisputeCreated(bytes32,address,address,uint256,bytes32,bytes,uint256,uint256) event"
+
+[table.disputes__query_dispute_created.columns]
+attestation = "The `attestation` bytes parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+cancellableAt = "The `cancellableAt` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+disputeId = "The `disputeId` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+fisherman = "The `fisherman` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+indexer = "The `indexer` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+stakeSnapshot = "The `stakeSnapshot` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+subgraphDeploymentId = "The `subgraphDeploymentId` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+tokens = "The `tokens` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.disputes__query_dispute_created.footguns]
+big_ints = [
+    "tokens",
+    "stakeSnapshot",
+    "cancellableAt",
+]
+overflows_dec = [
+    "tokens",
+    "stakeSnapshot",
+    "cancellableAt",
+]
+
+[table.epochs__epoch_length_update]
+description = "`EpochLengthUpdate(uint256,uint256)` events emitted by the `epochs` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per EpochLengthUpdate(uint256,uint256) event"
+
+[table.epochs__epoch_length_update.columns]
+epoch = "The `epoch` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+epochLength = "The `epochLength` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.epochs__epoch_length_update.footguns]
+big_ints = [
+    "epoch",
+    "epochLength",
+]
+overflows_dec = [
+    "epoch",
+    "epochLength",
+]
+
+[table.epochs__epoch_run]
+description = "`EpochRun(uint256,address)` events emitted by the `epochs` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per EpochRun(uint256,address) event"
+
+[table.epochs__epoch_run.columns]
+caller = "The `caller` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+epoch = "The `epoch` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.epochs__epoch_run.footguns]
+big_ints = ["epoch"]
+overflows_dec = ["epoch"]
+
 [table.subgraph_service__allocation_closed]
 description = "`AllocationClosed(address,address,bytes32,uint256,bool)` events emitted by the `subgraph_service` contract. (seeded from the ABI - edit semantic.toml to improve this)"
 grain = "one row per AllocationClosed(address,address,bytes32,uint256,bool) event"

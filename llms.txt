@@ -5,10 +5,22 @@ A self-hosted blockchain index. Query it locally; there is no third-party API.
 ## Contracts
 - `subgraph_service` = 0xb2bb92d0de618878e438b55d5846cfecd9301105
 - `curation` = 0x22d78fb4bc72e191c765807f8891b5e1785c8014
+- `epochs` = 0x5a843145c43d328b9bb7a4401d94918f131bb281
+- `disputes` = 0x2fe023a575449acb698648ed21276293fa176f96
 
 ## Tables (one per contract event)
 - `curation__burned` - Burned(address,bytes32,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, curator, subgraphDeploymentID, tokens, signal)
 - `curation__signalled` - Signalled(address,bytes32,uint256,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, curator, subgraphDeploymentID, tokens, signal, curationTax)
+- `disputes__dispute_accepted` - DisputeAccepted(bytes32,address,address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, disputeId, indexer, fisherman, tokens)
+- `disputes__dispute_cancelled` - DisputeCancelled(bytes32,address,address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, disputeId, indexer, fisherman, tokens)
+- `disputes__dispute_drawn` - DisputeDrawn(bytes32,address,address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, disputeId, indexer, fisherman, tokens)
+- `disputes__dispute_linked` - DisputeLinked(bytes32,bytes32) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, disputeId1, disputeId2)
+- `disputes__dispute_rejected` - DisputeRejected(bytes32,address,address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, disputeId, indexer, fisherman, tokens)
+- `disputes__indexing_dispute_created` - IndexingDisputeCreated(bytes32,address,address,uint256,address,bytes32,uint256,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, disputeId, indexer, fisherman, tokens, allocationId, poi, blockNumber, stakeSnapshot, cancellableAt)
+- `disputes__legacy_dispute_created` - LegacyDisputeCreated(bytes32,address,address,address,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, disputeId, indexer, fisherman, allocationId, tokensSlash, tokensRewards)
+- `disputes__query_dispute_created` - QueryDisputeCreated(bytes32,address,address,uint256,bytes32,bytes,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, disputeId, indexer, fisherman, tokens, subgraphDeploymentId, attestation, stakeSnapshot, cancellableAt)
+- `epochs__epoch_length_update` - EpochLengthUpdate(uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, epoch, epochLength)
+- `epochs__epoch_run` - EpochRun(uint256,address) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, epoch, caller)
 - `subgraph_service__allocation_closed` - AllocationClosed(address,address,bytes32,uint256,bool) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationId, subgraphDeploymentId, tokens, forceClosed)
 - `subgraph_service__allocation_created` - AllocationCreated(address,address,bytes32,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationId, subgraphDeploymentId, tokens, currentEpoch)
 - `subgraph_service__allocation_resized` - AllocationResized(address,address,bytes32,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationId, subgraphDeploymentId, newTokens, oldTokens)
