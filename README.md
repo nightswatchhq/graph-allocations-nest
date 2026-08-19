@@ -29,6 +29,9 @@ first figure would make the backfill 256 times longer.
   why computing it is wrong by a factor of 48 on Arbitrum.
 - **`lodestar_disputes`** - the dispute lifecycle, with `Undecided` falling out of a LEFT JOIN rather
   than needing a status on chain.
+- **`lodestar_escrow_transactions`** - PaymentsEscrow money movements in Lodestar's `PaymentsTx`
+  shape. Deposits match the network subgraph **exactly** (6,645); collections differ by **9 of
+  66,281** (0.014%) with the cause unestablished, both sides bounded to the same block.
 - **`port_queue`** - deployments with net signal and no open allocation, ranked. No threshold applied;
   the caller filters (see below).
 - **`deployment_signal`** - net curation signal per deployment, with GRT paid in and curator count.

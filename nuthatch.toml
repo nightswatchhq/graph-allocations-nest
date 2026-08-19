@@ -38,18 +38,16 @@ alias = "epochs"
 address = "0x5a843145c43d328b9bb7a4401d94918f131bb281"
 start_block = 42449227
 abi = "abis/epochs.json"
-# `EpochRun` is sparse (it fires only when somebody calls runEpoch) and carries no block range, so
-# epoch *boundaries* are computed from `EpochLengthUpdate` plus arithmetic rather than read off an
-# event. Both are needed: the length changes, and the run markers.
-events = ["EpochRun", "EpochLengthUpdate"]
+events = [
+    "EpochRun",
+    "EpochLengthUpdate",
+]
 
 [[contracts]]
 alias = "disputes"
 address = "0x2fe023a575449acb698648ed21276293fa176f96"
 start_block = 397492858
 abi = "abis/disputes.json"
-# The dispute lifecycle only. The contract emits 17 events; the parameter setters and ownership
-# plumbing are real data we deliberately do not carry here.
 events = [
     "IndexingDisputeCreated",
     "QueryDisputeCreated",
@@ -60,3 +58,12 @@ events = [
     "DisputeCancelled",
     "DisputeLinked",
 ]
+
+[[contracts]]
+alias = "escrow"
+address = "0xf6fcc27aaf1fcd8b254498c9794451d82afc673e"
+start_block = 397491106
+abi = "abis/escrow.json"
+# The escrow money movements Lodestar's `rav` module reads. `GraphDirectoryInitialized` and
+# `Initialized` are deployment plumbing and deliberately left out.
+events = ["Deposit", "Thaw", "CancelThaw", "Withdraw", "EscrowCollected"]

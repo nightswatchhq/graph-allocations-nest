@@ -221,6 +221,92 @@ epoch = "The `epoch` uint256 parameter. (seeded from the ABI - edit semantic.tom
 big_ints = ["epoch"]
 overflows_dec = ["epoch"]
 
+[table.escrow__cancel_thaw]
+description = "`CancelThaw(address,address,address,uint256,uint256)` events emitted by the `escrow` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per CancelThaw(address,address,address,uint256,uint256) event"
+
+[table.escrow__cancel_thaw.columns]
+collector = "The `collector` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+payer = "The `payer` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+receiver = "The `receiver` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+thawEndTimestamp = "The `thawEndTimestamp` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+tokensThawing = "The `tokensThawing` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.escrow__cancel_thaw.footguns]
+big_ints = [
+    "tokensThawing",
+    "thawEndTimestamp",
+]
+overflows_dec = [
+    "tokensThawing",
+    "thawEndTimestamp",
+]
+
+[table.escrow__deposit]
+description = "`Deposit(address,address,address,uint256)` events emitted by the `escrow` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per Deposit(address,address,address,uint256) event"
+
+[table.escrow__deposit.columns]
+collector = "The `collector` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+payer = "The `payer` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+receiver = "The `receiver` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+tokens = "The `tokens` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.escrow__deposit.footguns]
+big_ints = ["tokens"]
+overflows_dec = ["tokens"]
+
+[table.escrow__escrow_collected]
+description = "`EscrowCollected(uint8,address,address,address,uint256,address)` events emitted by the `escrow` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per EscrowCollected(uint8,address,address,address,uint256,address) event"
+
+[table.escrow__escrow_collected.columns]
+collector = "The `collector` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+payer = "The `payer` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+paymentType = "The `paymentType` uint8 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+receiver = "The `receiver` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+receiverDestination = "The `receiverDestination` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+tokens = "The `tokens` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.escrow__escrow_collected.footguns]
+big_ints = ["tokens"]
+overflows_dec = ["tokens"]
+
+[table.escrow__thaw]
+description = "`Thaw(address,address,address,uint256,uint256)` events emitted by the `escrow` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per Thaw(address,address,address,uint256,uint256) event"
+
+[table.escrow__thaw.columns]
+collector = "The `collector` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+payer = "The `payer` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+receiver = "The `receiver` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+thawEndTimestamp = "The `thawEndTimestamp` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+tokens = "The `tokens` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.escrow__thaw.footguns]
+big_ints = [
+    "tokens",
+    "thawEndTimestamp",
+]
+overflows_dec = [
+    "tokens",
+    "thawEndTimestamp",
+]
+
+[table.escrow__withdraw]
+description = "`Withdraw(address,address,address,uint256)` events emitted by the `escrow` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per Withdraw(address,address,address,uint256) event"
+
+[table.escrow__withdraw.columns]
+collector = "The `collector` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+payer = "The `payer` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+receiver = "The `receiver` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+tokens = "The `tokens` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.escrow__withdraw.footguns]
+big_ints = ["tokens"]
+overflows_dec = ["tokens"]
+
 [table.subgraph_service__allocation_closed]
 description = "`AllocationClosed(address,address,bytes32,uint256,bool)` events emitted by the `subgraph_service` contract. (seeded from the ABI - edit semantic.toml to improve this)"
 grain = "one row per AllocationClosed(address,address,bytes32,uint256,bool) event"
