@@ -108,6 +108,35 @@ overflows_dec = [
     "oldTokens",
 ]
 
+[table.subgraph_service__indexing_rewards_collected]
+description = "`IndexingRewardsCollected(address,address,bytes32,uint256,uint256,uint256,bytes32,bytes,uint256)` events emitted by the `subgraph_service` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per IndexingRewardsCollected(address,address,bytes32,uint256,uint256,uint256,bytes32,bytes,uint256) event"
+
+[table.subgraph_service__indexing_rewards_collected.columns]
+allocationId = "The `allocationId` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+currentEpoch = "The `currentEpoch` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+indexer = "The `indexer` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+poi = "The `poi` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+poiMetadata = "The `poiMetadata` bytes parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+subgraphDeploymentId = "The `subgraphDeploymentId` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+tokensDelegationRewards = "The `tokensDelegationRewards` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+tokensIndexerRewards = "The `tokensIndexerRewards` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+tokensRewards = "The `tokensRewards` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.subgraph_service__indexing_rewards_collected.footguns]
+big_ints = [
+    "tokensRewards",
+    "tokensIndexerRewards",
+    "tokensDelegationRewards",
+    "currentEpoch",
+]
+overflows_dec = [
+    "tokensRewards",
+    "tokensIndexerRewards",
+    "tokensDelegationRewards",
+    "currentEpoch",
+]
+
 [table.subgraph_service__legacy_allocation_migrated]
 description = "`LegacyAllocationMigrated(address,address,bytes32)` events emitted by the `subgraph_service` contract. (seeded from the ABI - edit semantic.toml to improve this)"
 grain = "one row per LegacyAllocationMigrated(address,address,bytes32) event"
@@ -116,6 +145,28 @@ grain = "one row per LegacyAllocationMigrated(address,address,bytes32) event"
 allocationId = "The `allocationId` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
 indexer = "The `indexer` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
 subgraphDeploymentId = "The `subgraphDeploymentId` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.subgraph_service__query_fees_collected]
+description = "`QueryFeesCollected(address,address,address,bytes32,uint256,uint256)` events emitted by the `subgraph_service` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per QueryFeesCollected(address,address,address,bytes32,uint256,uint256) event"
+
+[table.subgraph_service__query_fees_collected.columns]
+allocationId = "The `allocationId` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+payer = "The `payer` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+serviceProvider = "The `serviceProvider` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+subgraphDeploymentId = "The `subgraphDeploymentId` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+tokensCollected = "The `tokensCollected` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+tokensCurators = "The `tokensCurators` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.subgraph_service__query_fees_collected.footguns]
+big_ints = [
+    "tokensCollected",
+    "tokensCurators",
+]
+overflows_dec = [
+    "tokensCollected",
+    "tokensCurators",
+]
 
 [view]
 

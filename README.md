@@ -19,6 +19,10 @@ first figure would make the backfill 256 times longer.
 
 ## Query surface
 
+- **`lodestar_allocations`** - the `SubgraphAllocation` shape Lodestar's `ingest-allocations` route
+  wants (RFC-0011), served from events rather than the gateway. **Verified against the network
+  subgraph: 13,301 active allocations on both sides, exact.** 245,372 allocations total, 232,505
+  carrying a POI.
 - **`port_queue`** - deployments with net signal and no open allocation, ranked. No threshold applied;
   the caller filters (see below).
 - **`deployment_signal`** - net curation signal per deployment, with GRT paid in and curator count.

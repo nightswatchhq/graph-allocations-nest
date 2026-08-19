@@ -1,7 +1,7 @@
 [
   {
-    "deployments_ever_signalled": 13881,
-    "deployments_with_open_alloc": 6781,
+    "deployments_ever_signalled": 13884,
+    "deployments_with_open_alloc": 6787,
     "still_signalled": 7621
   }
 ]

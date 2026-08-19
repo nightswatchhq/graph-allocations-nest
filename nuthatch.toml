@@ -28,7 +28,18 @@ abi = "abis/subgraph-service.json"
 # `LegacyAllocationMigrated` is included because it is *removed* by the upgrade staged on 2026-07-23
 # and only ever fired during the Horizon migration - it is history that will never be re-emitted, so
 # the current ABI is the one that decodes it. Vendor the current ABI, never the pending one.
-events = ["AllocationCreated", "AllocationClosed", "AllocationResized", "LegacyAllocationMigrated"]
+# `IndexingRewardsCollected` and `QueryFeesCollected` were added 2026-08-19 for Lodestar's
+# `ingest-allocations` route (RFC-0011): the POI lives on the rewards event rather than on
+# `AllocationClosed`, and the per-allocation query fees have no other source. Both are on this
+# contract already, so this is an allowlist edit rather than new indexing surface.
+events = [
+    "AllocationCreated",
+    "AllocationClosed",
+    "AllocationResized",
+    "LegacyAllocationMigrated",
+    "IndexingRewardsCollected",
+    "QueryFeesCollected",
+]
 
 [[contracts]]
 alias = "curation"

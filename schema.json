@@ -1,5 +1,5 @@
 {
-  "registry_hash": "0x12dd6a9fa72c4d3716621c2c634fb1275cc8f31e5a16c765fb6b97553fa96316",
+  "registry_hash": "0x281d4e87e7febfb5a8d12a0c4b19a94c1f9fbd2f59b9915eb83f7ce382aec413",
   "tables": [
     {
       "alias": "curation",
@@ -457,11 +457,201 @@
           "name": "subgraphDeploymentId",
           "sol_type": "bytes32",
           "storage": "fixed_bytes"
+        },
+        {
+          "indexed": false,
+          "name": "tokensRewards",
+          "sol_type": "uint256",
+          "storage": "word32"
+        },
+        {
+          "indexed": false,
+          "name": "tokensIndexerRewards",
+          "sol_type": "uint256",
+          "storage": "word32"
+        },
+        {
+          "indexed": false,
+          "name": "tokensDelegationRewards",
+          "sol_type": "uint256",
+          "storage": "word32"
+        },
+        {
+          "indexed": false,
+          "name": "poi",
+          "sol_type": "bytes32",
+          "storage": "fixed_bytes"
+        },
+        {
+          "indexed": false,
+          "name": "poiMetadata",
+          "sol_type": "bytes",
+          "storage": "bytes"
+        },
+        {
+          "indexed": false,
+          "name": "currentEpoch",
+          "sol_type": "uint256",
+          "storage": "word32"
+        }
+      ],
+      "event": "IndexingRewardsCollected(address,address,bytes32,uint256,uint256,uint256,bytes32,bytes,uint256)",
+      "table": "subgraph_service__indexing_rewards_collected",
+      "topic0": "0x443f56bd2098d273b8c8120398789a41da5925db4ba2f656813fc5299ac57b1f"
+    },
+    {
+      "alias": "subgraph_service",
+      "columns": [
+        {
+          "indexed": false,
+          "name": "block_number",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "block_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "block_timestamp",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "tx_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "log_index",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "address",
+          "sol_type": "implicit",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "_seq",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": true,
+          "name": "indexer",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": true,
+          "name": "allocationId",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": true,
+          "name": "subgraphDeploymentId",
+          "sol_type": "bytes32",
+          "storage": "fixed_bytes"
         }
       ],
       "event": "LegacyAllocationMigrated(address,address,bytes32)",
       "table": "subgraph_service__legacy_allocation_migrated",
       "topic0": "0xd54c7abc930f6d506da2d08aa7aead4f2443e1db6d5f560384a2f652ff893e19"
+    },
+    {
+      "alias": "subgraph_service",
+      "columns": [
+        {
+          "indexed": false,
+          "name": "block_number",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "block_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "block_timestamp",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "tx_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "log_index",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "address",
+          "sol_type": "implicit",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "_seq",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": true,
+          "name": "serviceProvider",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": true,
+          "name": "payer",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": true,
+          "name": "allocationId",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "subgraphDeploymentId",
+          "sol_type": "bytes32",
+          "storage": "fixed_bytes"
+        },
+        {
+          "indexed": false,
+          "name": "tokensCollected",
+          "sol_type": "uint256",
+          "storage": "word32"
+        },
+        {
+          "indexed": false,
+          "name": "tokensCurators",
+          "sol_type": "uint256",
+          "storage": "word32"
+        }
+      ],
+      "event": "QueryFeesCollected(address,address,address,bytes32,uint256,uint256)",
+      "table": "subgraph_service__query_fees_collected",
+      "topic0": "0x184c452047299395d4f7f147eb8e823458a450798539be54aeed978f13d87ba2"
     }
   ]
 }

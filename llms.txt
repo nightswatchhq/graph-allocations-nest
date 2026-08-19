@@ -12,7 +12,9 @@ A self-hosted blockchain index. Query it locally; there is no third-party API.
 - `subgraph_service__allocation_closed` - AllocationClosed(address,address,bytes32,uint256,bool) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationId, subgraphDeploymentId, tokens, forceClosed)
 - `subgraph_service__allocation_created` - AllocationCreated(address,address,bytes32,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationId, subgraphDeploymentId, tokens, currentEpoch)
 - `subgraph_service__allocation_resized` - AllocationResized(address,address,bytes32,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationId, subgraphDeploymentId, newTokens, oldTokens)
+- `subgraph_service__indexing_rewards_collected` - IndexingRewardsCollected(address,address,bytes32,uint256,uint256,uint256,bytes32,bytes,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationId, subgraphDeploymentId, tokensRewards, tokensIndexerRewards, tokensDelegationRewards, poi, poiMetadata, currentEpoch)
 - `subgraph_service__legacy_allocation_migrated` - LegacyAllocationMigrated(address,address,bytes32) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationId, subgraphDeploymentId)
+- `subgraph_service__query_fees_collected` - QueryFeesCollected(address,address,address,bytes32,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, serviceProvider, payer, allocationId, subgraphDeploymentId, tokensCollected, tokensCurators)
 
 ## Live HTTP API (run `nuthatch dev`)
 - `GET /`                    index status
