@@ -1,0 +1,124 @@
+# semantic.toml - what this nest's data *means* (RFC-0016). Read by the MCP `schema`
+# tool, the admin UI, and the scaffolded skill. Edit descriptions freely; the
+# `[table.*.footguns]` are DERIVED from the ABI and regenerated - leave them be.
+
+schema_version = 1
+
+[nest]
+description = "The `graph-allocations-nest` nest on arbitrum-one. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.curation__burned]
+description = "`Burned(address,bytes32,uint256,uint256)` events emitted by the `curation` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per Burned(address,bytes32,uint256,uint256) event"
+
+[table.curation__burned.columns]
+curator = "The `curator` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+signal = "The `signal` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+subgraphDeploymentID = "The `subgraphDeploymentID` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+tokens = "The `tokens` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.curation__burned.footguns]
+big_ints = [
+    "tokens",
+    "signal",
+]
+overflows_dec = [
+    "tokens",
+    "signal",
+]
+
+[table.curation__signalled]
+description = "`Signalled(address,bytes32,uint256,uint256,uint256)` events emitted by the `curation` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per Signalled(address,bytes32,uint256,uint256,uint256) event"
+
+[table.curation__signalled.columns]
+curationTax = "The `curationTax` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+curator = "The `curator` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+signal = "The `signal` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+subgraphDeploymentID = "The `subgraphDeploymentID` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+tokens = "The `tokens` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.curation__signalled.footguns]
+big_ints = [
+    "tokens",
+    "signal",
+    "curationTax",
+]
+overflows_dec = [
+    "tokens",
+    "signal",
+    "curationTax",
+]
+
+[table.subgraph_service__allocation_closed]
+description = "`AllocationClosed(address,address,bytes32,uint256,bool)` events emitted by the `subgraph_service` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per AllocationClosed(address,address,bytes32,uint256,bool) event"
+
+[table.subgraph_service__allocation_closed.columns]
+allocationId = "The `allocationId` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+forceClosed = "The `forceClosed` bool parameter - stored as exact text `'true'`/`'false'`, not a SQL boolean. `forceClosed = true` and `AND`/`NOT` implicitly cast and work; `COALESCE`, `CASE`, `bool_and`/`bool_or` and `UNION` do not. Write `forceClosed = 'true'` or `CAST(forceClosed AS BOOLEAN)`. (seeded from the ABI - edit semantic.toml to improve this)"
+indexer = "The `indexer` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+subgraphDeploymentId = "The `subgraphDeploymentId` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+tokens = "The `tokens` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.subgraph_service__allocation_closed.footguns]
+big_ints = ["tokens"]
+overflows_dec = ["tokens"]
+bools = ["forceClosed"]
+
+[table.subgraph_service__allocation_created]
+description = "`AllocationCreated(address,address,bytes32,uint256,uint256)` events emitted by the `subgraph_service` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per AllocationCreated(address,address,bytes32,uint256,uint256) event"
+
+[table.subgraph_service__allocation_created.columns]
+allocationId = "The `allocationId` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+currentEpoch = "The `currentEpoch` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+indexer = "The `indexer` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+subgraphDeploymentId = "The `subgraphDeploymentId` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+tokens = "The `tokens` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.subgraph_service__allocation_created.footguns]
+big_ints = [
+    "tokens",
+    "currentEpoch",
+]
+overflows_dec = [
+    "tokens",
+    "currentEpoch",
+]
+
+[table.subgraph_service__allocation_resized]
+description = "`AllocationResized(address,address,bytes32,uint256,uint256)` events emitted by the `subgraph_service` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per AllocationResized(address,address,bytes32,uint256,uint256) event"
+
+[table.subgraph_service__allocation_resized.columns]
+allocationId = "The `allocationId` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+indexer = "The `indexer` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+newTokens = "The `newTokens` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+oldTokens = "The `oldTokens` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+subgraphDeploymentId = "The `subgraphDeploymentId` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.subgraph_service__allocation_resized.footguns]
+big_ints = [
+    "newTokens",
+    "oldTokens",
+]
+overflows_dec = [
+    "newTokens",
+    "oldTokens",
+]
+
+[table.subgraph_service__legacy_allocation_migrated]
+description = "`LegacyAllocationMigrated(address,address,bytes32)` events emitted by the `subgraph_service` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per LegacyAllocationMigrated(address,address,bytes32) event"
+
+[table.subgraph_service__legacy_allocation_migrated.columns]
+allocationId = "The `allocationId` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+indexer = "The `indexer` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+subgraphDeploymentId = "The `subgraphDeploymentId` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[view]
+
+# Authored views (views/*.sql) are described here so the MCP/`/schema` can render them:
+# [view.your_view_name]
+# description = "What this derivation computes."

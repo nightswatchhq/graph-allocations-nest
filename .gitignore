@@ -1,0 +1,6 @@
+nuthatch.redb
+segments/
+mounts.toml
+data/
+backfill.log
+run-backfill.sh

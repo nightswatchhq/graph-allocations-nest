@@ -1,0 +1,42 @@
+[nest]
+name = "graph-allocations-nest"
+chain = "arbitrum-one"
+chain_id = 42161
+rpc_urls = [
+    "https://arb1.arbitrum.io/rpc",
+    "https://arb-pokt.nodies.app",
+]
+schema_version = 1
+block_timestamps = true
+
+# The port queue (docs/launch/port-queue-nest.md in nuthatch): which subgraph deployments have
+# curation signal staked on them and no indexer currently serving them. Two contracts, because
+# allocations and signal both key on `subgraphDeploymentId` and a nuthatch query is per-nest scoped -
+# the join has to live inside one nest or it is not a join.
+
+[[contracts]]
+alias = "subgraph_service"
+address = "0xb2bb92d0de618878e438b55d5846cfecd9301105"
+# Verified two ways: binary search on eth_getCode against an archive RPC, and `nuthatch init`'s own
+# detection, which agreed to the block. 2025-11-06 19:00 UTC.
+start_block = 397492865
+abi = "abis/subgraph-service.json"
+# The allocation lifecycle only. The contract emits 31 events; the rest (payments, service-provider
+# registration, parameter setters) are real data we deliberately do not carry here, per RFC-0011's
+# precedent of keeping a nest's allowlist to the question it answers.
+#
+# `LegacyAllocationMigrated` is included because it is *removed* by the upgrade staged on 2026-07-23
+# and only ever fired during the Horizon migration - it is history that will never be re-emitted, so
+# the current ABI is the one that decodes it. Vendor the current ABI, never the pending one.
+events = ["AllocationCreated", "AllocationClosed", "AllocationResized", "LegacyAllocationMigrated"]
+
+[[contracts]]
+alias = "curation"
+address = "0x22d78fb4bc72e191c765807f8891b5e1785c8014"
+# Binary search on eth_getCode; 2022-11-30 13:39 UTC, 182 blocks from graph-staking-nest's pinned
+# 42449585, same day. Signal is cumulative, so current signal needs every event since the L2
+# deployment - this is the expensive half of the backfill and it cannot be shortened without
+# producing wrong balances.
+start_block = 42449403
+abi = "abis/curation.json"
+events = ["Signalled", "Burned"]

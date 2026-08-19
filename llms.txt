@@ -1,0 +1,28 @@
+# nuthatch nest on arbitrum-one
+
+A self-hosted blockchain index. Query it locally; there is no third-party API.
+
+## Contracts
+- `subgraph_service` = 0xb2bb92d0de618878e438b55d5846cfecd9301105
+- `curation` = 0x22d78fb4bc72e191c765807f8891b5e1785c8014
+
+## Tables (one per contract event)
+- `curation__burned` - Burned(address,bytes32,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, curator, subgraphDeploymentID, tokens, signal)
+- `curation__signalled` - Signalled(address,bytes32,uint256,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, curator, subgraphDeploymentID, tokens, signal, curationTax)
+- `subgraph_service__allocation_closed` - AllocationClosed(address,address,bytes32,uint256,bool) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationId, subgraphDeploymentId, tokens, forceClosed)
+- `subgraph_service__allocation_created` - AllocationCreated(address,address,bytes32,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationId, subgraphDeploymentId, tokens, currentEpoch)
+- `subgraph_service__allocation_resized` - AllocationResized(address,address,bytes32,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationId, subgraphDeploymentId, newTokens, oldTokens)
+- `subgraph_service__legacy_allocation_migrated` - LegacyAllocationMigrated(address,address,bytes32) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationId, subgraphDeploymentId)
+
+## Live HTTP API (run `nuthatch dev`)
+- `GET /`                    index status
+- `GET /tables`              every table with its columns
+- `GET /table/{name}?limit=N` recent rows of one table (hot + sealed)
+- `GET /entity/{id}`         one row by id (`{block:012}-{logindex:06}`)
+- `GET /sql?q=SELECT...`     read-only SQL; each table is a view named `{alias}__{event}`
+- `GET /balances?limit=N`    top holder balances (when an ERC-20 Transfer table is present)
+- `GET /balance/{address}`   one address's derived balance
+
+## MCP (for coding agents)
+Run `nuthatch mcp` (stdio) to expose tools: status, schema, tables, table, sql, entity,
+balance, top_balances. Fully offline against the local instance; nothing phones home.
