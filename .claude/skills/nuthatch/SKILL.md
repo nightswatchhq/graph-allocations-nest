@@ -8,6 +8,9 @@ description: Query this self-hosted nuthatch nest on arbitrum-one - decoded even
 Contracts indexed on arbitrum-one:
 - `subgraph_service` = 0xb2bb92d0de618878e438b55d5846cfecd9301105
 - `curation` = 0x22d78fb4bc72e191c765807f8891b5e1785c8014
+- `epochs` = 0x5a843145c43d328b9bb7a4401d94918f131bb281
+- `disputes` = 0x2fe023a575449acb698648ed21276293fa176f96
+- `escrow` = 0xf6fcc27aaf1fcd8b254498c9794451d82afc673e
 
 Data is local - never call an external API for it.
 

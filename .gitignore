@@ -4,3 +4,5 @@ mounts.toml
 data/
 backfill.log
 run-backfill.sh
+q*.log
+run-backfill.sh
