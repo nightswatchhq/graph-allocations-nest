@@ -64,6 +64,93 @@ alias = "escrow"
 address = "0xf6fcc27aaf1fcd8b254498c9794451d82afc673e"
 start_block = 397491106
 abi = "abis/escrow.json"
-# The escrow money movements Lodestar's `rav` module reads. `GraphDirectoryInitialized` and
-# `Initialized` are deployment plumbing and deliberately left out.
-events = ["Deposit", "Thaw", "CancelThaw", "Withdraw", "EscrowCollected"]
+events = [
+    "Deposit",
+    "Thaw",
+    "CancelThaw",
+    "Withdraw",
+    "EscrowCollected",
+]
+
+[[contracts]]
+alias = "staking"
+address = "0x00669a4cf01450b64e8a2a20e9b1fcb71e61ef03"
+start_block = 42449585
+abi = "abis/staking.json"
+# What `network-snapshot` needs from staking: total staked, total delegated, and the distinct-address
+# counts. Provisions are how Horizon expresses stake; delegation is its own pair.
+events = [
+    "HorizonStakeDeposited",
+    "HorizonStakeWithdrawn",
+    "ProvisionCreated",
+    "ProvisionIncreased",
+    "TokensDeprovisioned",
+    "TokensDelegated",
+    "TokensUndelegated",
+    "DelegatedTokensWithdrawn",
+    "StakeDelegatedWithdrawn",
+]
+
+# The same proxy address as `staking`, deliberately, and a second entry rather than a merged ABI.
+#
+# `0x00669a4c…` has had at least three implementations behind it. Horizon renamed the staking events
+# wholesale - `StakeDeposited` became `HorizonStakeDeposited`, `StakeDelegated` became
+# `TokensDelegated` - so the Horizon ABI describes only history after block ~408,847,369 and is
+# silent about the 366 million blocks before it. Indexing only that half produced a
+# `totalDelegatedTokens` that was *negative*: Horizon-era deposits minus legacy-era withdrawals.
+#
+# ABIs from Sourcify: the pre-Horizon implementation `0x0dae36ad…` for the stake events, and the
+# StakingExtension `0x3be38557…` for `StakeDelegatedLocked`, because The Graph splits staking across
+# a main contract and an extension that both emit from this one proxy.
+#
+# `StakeDelegatedWithdrawn` is deliberately absent here: its signature is unchanged across the
+# upgrade, so the `staking` entry above already captures the whole of it, back to block 90,985,212.
+# Declaring it twice would decode every log into two identically-populated tables.
+[[contracts]]
+alias = "staking_legacy"
+address = "0x00669a4cf01450b64e8a2a20e9b1fcb71e61ef03"
+start_block = 42449585
+abi = "abis/staking-legacy.json"
+events = [
+    "StakeDeposited",
+    "StakeWithdrawn",
+    "StakeDelegated",
+    "StakeDelegatedLocked",
+    # Slashing is the only other thing that reduces an indexer's stake, and it is why
+    # `stakedIndexersCount` read 100 against the subgraph's 97 (#649 gap 3). Legacy only: 24 events,
+    # 7 indexers, all before Horizon - `ProvisionSlashed` on the Horizon ABI has never fired.
+    # Vendored by hand: the ABI Sourcify returns for this proxy is the StakingExtension, which does
+    # not declare it. Shape confirmed against a real log rather than recalled - one indexed
+    # `indexer`, then `tokens`/`reward`/`beneficiary`, with `reward` exactly half of `tokens`.
+    "StakeSlashed",
+]
+
+[[contracts]]
+alias = "gns"
+address = "0xec9a7fb6cbc2e41926127929c2dce6e9c5d33bec"
+start_block = 42449510
+abi = "abis/gns.json"
+# Subgraph counts. `SubgraphPublished` is the universe; `SubgraphDeprecated` is what makes
+# `activeSubgraphCount` different from `subgraphCount`.
+# `curatorCount` is distinct addresses ever passed to `createOrLoadCurator` in the network subgraph
+# (`helpers.ts:521`), and that is called from **eight** handlers, not one - `handleSignalled` and
+# `handleBurned` on Curation, plus the V1 and V2 name-signal handlers on GNS. Most L2 signal is routed
+# through GNS, so `L2Curation.Signalled.curator` holds the *GNS contract* rather than the person,
+# which is why curating off Curation alone reported 50 against the gateway's 1,819. See issue #649.
+events = [
+    "SubgraphPublished",
+    "SubgraphDeprecated",
+    "SignalMinted",
+    "SignalBurned",
+    "GRTWithdrawn",
+]
+
+# RFC-0023 tier 3. `network-snapshot` wants GRT `totalSupply`, and deriving it would mean indexing
+# every L2GraphToken Transfer to sum mints minus burns - millions of rows for one number. A pinned
+# read samples it instead, at a fraction of the cost, and stays deterministic because the block is
+# pinned. Needs `--state-rpc`.
+[[calls]]
+name = "grt_total_supply"
+contract = "0x9623063377AD1B27544C965cCd7342f7EA7e88C7"
+calldata = "0x18160ddd"
+every = 100000
