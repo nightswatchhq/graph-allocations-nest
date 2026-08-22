@@ -22,6 +22,18 @@ WITH staked AS (
     SELECT "serviceProvider",         CAST(tokens AS HUGEINT)      FROM staking__horizon_stake_deposited
     UNION ALL
     SELECT "serviceProvider",        -CAST(tokens AS HUGEINT)      FROM staking__horizon_stake_withdrawn
+    UNION ALL
+    -- Slashing, and it is the whole of #649 gap 3. Deposits minus withdrawals left three indexers
+    -- holding 97k-247k GRT that the subgraph reports at zero; each had been slashed for *exactly*
+    -- its remaining balance, to the decimal. `tokens` is the full amount removed - the `reward`
+    -- beside it is the informer's cut of that same sum, not an additional debit, so subtracting
+    -- both would double-count.
+    --
+    -- Legacy only. `ProvisionSlashed` exists on the Horizon ABI and has never fired: 0 logs across
+    -- 408,000,000..496,956,109, checked against a control on the same address and range returning
+    -- 129,387. The legacy signature had to be confirmed the same way - the first attempt guessed a
+    -- five-parameter form, got 0 logs, and that zero looked exactly like an answer.
+    SELECT indexer,                  -CAST(tokens AS HUGEINT)      FROM staking_legacy__stake_slashed
     ) GROUP BY 1
   )
 ),
