@@ -116,6 +116,13 @@ events = [
     "StakeWithdrawn",
     "StakeDelegated",
     "StakeDelegatedLocked",
+    # Slashing is the only other thing that reduces an indexer's stake, and it is why
+    # `stakedIndexersCount` read 100 against the subgraph's 97 (#649 gap 3). Legacy only: 24 events,
+    # 7 indexers, all before Horizon - `ProvisionSlashed` on the Horizon ABI has never fired.
+    # Vendored by hand: the ABI Sourcify returns for this proxy is the StakingExtension, which does
+    # not declare it. Shape confirmed against a real log rather than recalled - one indexed
+    # `indexer`, then `tokens`/`reward`/`beneficiary`, with `reward` exactly half of `tokens`.
+    "StakeSlashed",
 ]
 
 [[contracts]]
