@@ -8,6 +8,9 @@ A self-hosted blockchain index. Query it locally; there is no third-party API.
 - `epochs` = 0x5a843145c43d328b9bb7a4401d94918f131bb281
 - `disputes` = 0x2fe023a575449acb698648ed21276293fa176f96
 - `escrow` = 0xf6fcc27aaf1fcd8b254498c9794451d82afc673e
+- `staking` = 0x00669a4cf01450b64e8a2a20e9b1fcb71e61ef03
+- `staking_legacy` = 0x00669a4cf01450b64e8a2a20e9b1fcb71e61ef03
+- `gns` = 0xec9a7fb6cbc2e41926127929c2dce6e9c5d33bec
 
 ## Tables (one per contract event)
 - `curation__burned` - Burned(address,bytes32,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, curator, subgraphDeploymentID, tokens, signal)
@@ -27,12 +30,32 @@ A self-hosted blockchain index. Query it locally; there is no third-party API.
 - `escrow__escrow_collected` - EscrowCollected(uint8,address,address,address,uint256,address) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, paymentType, payer, collector, receiver, tokens, receiverDestination)
 - `escrow__thaw` - Thaw(address,address,address,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, payer, collector, receiver, tokens, thawEndTimestamp)
 - `escrow__withdraw` - Withdraw(address,address,address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, payer, collector, receiver, tokens)
+- `gns__g_r_t_withdrawn` - GRTWithdrawn(uint256,address,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, subgraphID, curator, nSignalBurnt, withdrawnGRT)
+- `gns__signal_burned` - SignalBurned(uint256,address,uint256,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, subgraphID, curator, nSignalBurnt, vSignalBurnt, tokensReceived)
+- `gns__signal_minted` - SignalMinted(uint256,address,uint256,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, subgraphID, curator, nSignalCreated, vSignalCreated, tokensDeposited)
+- `gns__subgraph_deprecated` - SubgraphDeprecated(uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, subgraphID, withdrawableGRT)
+- `gns__subgraph_published` - SubgraphPublished(uint256,bytes32,uint32) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, subgraphID, subgraphDeploymentID, reserveRatio)
+- `staking__delegated_tokens_withdrawn` - DelegatedTokensWithdrawn(address,address,address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, serviceProvider, verifier, delegator, tokens)
+- `staking__horizon_stake_deposited` - HorizonStakeDeposited(address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, serviceProvider, tokens)
+- `staking__horizon_stake_withdrawn` - HorizonStakeWithdrawn(address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, serviceProvider, tokens)
+- `staking__provision_created` - ProvisionCreated(address,address,uint256,uint32,uint64) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, serviceProvider, verifier, tokens, maxVerifierCut, thawingPeriod)
+- `staking__provision_increased` - ProvisionIncreased(address,address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, serviceProvider, verifier, tokens)
+- `staking__stake_delegated_withdrawn` - StakeDelegatedWithdrawn(address,address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, delegator, tokens)
+- `staking__tokens_delegated` - TokensDelegated(address,address,address,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, serviceProvider, verifier, delegator, tokens, shares)
+- `staking__tokens_deprovisioned` - TokensDeprovisioned(address,address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, serviceProvider, verifier, tokens)
+- `staking__tokens_undelegated` - TokensUndelegated(address,address,address,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, serviceProvider, verifier, delegator, tokens, shares)
+- `staking_legacy__stake_delegated` - StakeDelegated(address,address,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, delegator, tokens, shares)
+- `staking_legacy__stake_delegated_locked` - StakeDelegatedLocked(address,address,uint256,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, delegator, tokens, shares, until)
+- `staking_legacy__stake_deposited` - StakeDeposited(address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, tokens)
+- `staking_legacy__stake_slashed` - StakeSlashed(address,uint256,uint256,address) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, tokens, reward, beneficiary)
+- `staking_legacy__stake_withdrawn` - StakeWithdrawn(address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, tokens)
 - `subgraph_service__allocation_closed` - AllocationClosed(address,address,bytes32,uint256,bool) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationId, subgraphDeploymentId, tokens, forceClosed)
 - `subgraph_service__allocation_created` - AllocationCreated(address,address,bytes32,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationId, subgraphDeploymentId, tokens, currentEpoch)
 - `subgraph_service__allocation_resized` - AllocationResized(address,address,bytes32,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationId, subgraphDeploymentId, newTokens, oldTokens)
 - `subgraph_service__indexing_rewards_collected` - IndexingRewardsCollected(address,address,bytes32,uint256,uint256,uint256,bytes32,bytes,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationId, subgraphDeploymentId, tokensRewards, tokensIndexerRewards, tokensDelegationRewards, poi, poiMetadata, currentEpoch)
 - `subgraph_service__legacy_allocation_migrated` - LegacyAllocationMigrated(address,address,bytes32) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationId, subgraphDeploymentId)
 - `subgraph_service__query_fees_collected` - QueryFeesCollected(address,address,address,bytes32,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, serviceProvider, payer, allocationId, subgraphDeploymentId, tokensCollected, tokensCurators)
+- `grt_total_supply` -  (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, calldata, result, reverted, content_address)
 
 ## Live HTTP API (run `nuthatch dev`)
 - `GET /`                    index status
