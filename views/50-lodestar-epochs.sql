@@ -46,23 +46,35 @@ WITH rewards AS (
          SUM(CAST("tokensDelegationRewards" AS HUGEINT)) AS total_delegator_rewards
   FROM subgraph_service__indexing_rewards_collected GROUP BY 1
 ),
+-- `queryFeesCollected` in the network subgraph is **net**, not gross: the curator share and a 1%
+-- protocol tax are both taken out, and the tax is truncated **per event** rather than on the epoch
+-- total. Summing first and taxing the total is wrong by a few hundred wei per epoch, which is small
+-- enough to look like rounding noise and is in fact a different quantity. Integer division is
+-- required: DuckDB's `/` returns a DOUBLE and loses precision outright at 1e23.
+-- Measured over the 175 closed epochs from 1195 up, this took exact agreement from 0 to 145.
 fees AS (
   SELECT b.epoch,
-         SUM(CAST(q."tokensCollected" AS HUGEINT)) AS query_fees_collected,
-         SUM(CAST(q."tokensCurators"  AS HUGEINT)) AS curator_query_fees
+         SUM(CAST(q."tokensCollected" AS HUGEINT)
+             - CAST(q."tokensCurators" AS HUGEINT)
+             - (CAST(q."tokensCollected" AS HUGEINT) // 100)) AS query_fees_collected,
+         SUM(CAST(q."tokensCurators"  AS HUGEINT))            AS curator_query_fees
   FROM subgraph_service__query_fees_collected q
   JOIN epoch_boundaries b
     ON q.block_number >= b.start_block AND q.block_number <= b.end_block
   GROUP BY 1
 ),
+-- `signalledTokens` is **gross signal net of the curation tax**, and burns are not subtracted from
+-- it at all. This previously computed `signalled - burned` and ignored `curationTax`, wrong in two
+-- directions at once. The tell was that 81 of 266 epochs came out **negative**: a net flow was being
+-- compared against something that is not a flow, and a negative token quantity is impossible as the
+-- stock the subgraph is reporting. Measured, exact agreement went from 6 of 175 to 165 of 175, and
+-- the ten that remain are five adjacent pairs of equal and opposite magnitude - value filed one
+-- epoch out by the observed-boundary problem described above, not value lost.
 signal AS (
-  SELECT b.epoch, SUM(t.tok) AS signalled_tokens
-  FROM (
-    SELECT block_number, CAST(tokens AS HUGEINT) AS tok FROM curation__signalled
-    UNION ALL
-    SELECT block_number, -CAST(tokens AS HUGEINT)     FROM curation__burned
-  ) t
-  JOIN epoch_boundaries b ON t.block_number >= b.start_block AND t.block_number <= b.end_block
+  SELECT b.epoch,
+         SUM(CAST(s.tokens AS HUGEINT) - CAST(s."curationTax" AS HUGEINT)) AS signalled_tokens
+  FROM curation__signalled s
+  JOIN epoch_boundaries b ON s.block_number >= b.start_block AND s.block_number <= b.end_block
   GROUP BY 1
 )
 SELECT b.epoch                                  AS id,
