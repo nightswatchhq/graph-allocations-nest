@@ -30,8 +30,13 @@ first figure would make the backfill 256 times longer.
 - **`lodestar_disputes`** - the dispute lifecycle, with `Undecided` falling out of a LEFT JOIN rather
   than needing a status on chain.
 - **`lodestar_escrow_transactions`** - PaymentsEscrow money movements in Lodestar's `PaymentsTx`
-  shape. Deposits match the network subgraph **exactly** (6,645); collections differ by **9 of
-  66,281** (0.014%) with the cause unestablished, both sides bounded to the same block.
+  shape. Deposits match the network subgraph **exactly**; collections are a strict superset, and the
+  **cause is now established**. Joining on the decoded subgraph id (`txHash || logIndex` as
+  little-endian uint32, where its index is ours plus one) matches every subgraph row with **zero**
+  subgraph-only rows. The nest-only rows are `EscrowCollected` events where **`payer == collector`**,
+  one address collecting from itself, which the subgraph drops. Two further nest rows are `Thaw` and
+  `CancelThaw`, types the subgraph's entity does not model at all. See
+  nightswatchhq/nuthatch#1114.
 - **`port_queue`** - deployments with net signal and no open allocation, ranked. No threshold applied;
   the caller filters (see below).
 - **`deployment_signal`** - net curation signal per deployment, with GRT paid in and curator count.

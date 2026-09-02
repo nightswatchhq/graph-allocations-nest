@@ -433,3 +433,9 @@ overflows_dec = [
 
 [view.lodestar_delegations]
 description = "Delegation, undelegation and withdrawal events across Horizon staking and the pre-Horizon topics on the same proxy. The shape Lodestar's delegations cron and /api/delegation-events read. tokens is wei."
+
+[view.lodestar_epochs]
+description = "Per-epoch rewards, query fees and signal in Lodestar's SubgraphEpoch shape. Three of the value columns are defined to match the Graph Network subgraph's fields exactly rather than the raw event sums, and the difference is not cosmetic: signalled_tokens is gross signal MINUS curationTax and does NOT subtract burns (subtracting burns produced negative values in 81 of 266 epochs); query_fees_collected is tokensCollected minus tokensCurators minus a 1% protocol tax truncated PER EVENT, not on the epoch total. Boundaries are observed from the currentEpoch the events carry, so every epoch except the newest is immutable at a pinned block, and start_block/end_block are L2 observations that are not comparable with the subgraph's L1 EpochManager numbers. All amounts are wei."
+
+[view.epoch_boundaries]
+description = "The (epoch, L2 block) window each epoch occupies, observed from AllocationCreated and IndexingRewardsCollected rather than computed from EpochManager.epochLength - computing it is wrong by a factor of ~48 on Arbitrum because the contract counts L1 blocks while logs carry L2. An epoch's start_block is its FIRST OBSERVED Horizon event, which is at or after its true start, so events in that gap are attributed to the predecessor epoch. That drift is measurable and conserves: see nightswatchhq/nuthatch#1113."
