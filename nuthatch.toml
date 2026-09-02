@@ -67,3 +67,23 @@ abi = "abis/escrow.json"
 # The escrow money movements Lodestar's `rav` module reads. `GraphDirectoryInitialized` and
 # `Initialized` are deployment plumbing and deliberately left out.
 events = ["Deposit", "Thaw", "CancelThaw", "Withdraw", "EscrowCollected"]
+
+# The four Horizon delegation events Lodestar's feed already reads from graph-staking-nest.
+# Declaring them here is what makes `views/80-lodestar-delegations.sql` true of *this* nest.
+# Deploying this alongside graph-staking-nest indexes the same events twice; that is #1075's
+# decision, not this view's. The allowlist is the same four events, nothing else.
+[[contracts]]
+alias = "staking"
+address = "0x00669a4cf01450b64e8a2a20e9b1fcb71e61ef03"
+start_block = 42449585
+abi = "abis/staking.json"
+events = ["TokensDelegated", "TokensUndelegated", "DelegatedTokensWithdrawn", "StakeDelegatedWithdrawn"]
+
+# Same proxy, pre-Horizon topics. No one ABI contains both generations. Without this, a
+# delegation view covering the Horizon transition silently drops 366M blocks (#1082).
+[[contracts]]
+alias = "staking_legacy"
+address = "0x00669a4cf01450b64e8a2a20e9b1fcb71e61ef03"
+start_block = 42449585
+abi = "abis/staking-legacy.json"
+events = ["StakeDelegated", "StakeDelegatedLocked"]

@@ -430,3 +430,6 @@ overflows_dec = [
 # Authored views (views/*.sql) are described here so the MCP/`/schema` can render them:
 # [view.your_view_name]
 # description = "What this derivation computes."
+
+[view.lodestar_delegations]
+description = "Delegation, undelegation and withdrawal events across Horizon staking and the pre-Horizon topics on the same proxy. The shape Lodestar's delegations cron and /api/delegation-events read. tokens is wei."
