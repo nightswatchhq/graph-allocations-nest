@@ -31,6 +31,24 @@ SELECT epoch,
        -- runs to its own last observation - open-ended rather than wrong.
        COALESCE(LEAD(first_seen) OVER (ORDER BY epoch) - 1, last_seen) AS end_block,
        last_seen,
+       -- **The width of the uncertainty, exposed rather than implied.** An epoch's true start lies
+       -- somewhere between the previous epoch's last observation and this one's first; everything in
+       -- that window is attributed to the predecessor by the `end_block` rule above, and the subgraph
+       -- may put some of it here instead. This column is that window's size in L2 blocks, so a
+       -- consumer can tell a boundary that is nailed down from one that is a few thousand blocks wide.
+       --
+       -- Measured against the Graph Network subgraph at pinned block 501157502, this is the whole
+       -- remaining disagreement in `query_fees_collected` and `signalled_tokens` from epoch 1302 up:
+       -- every disagreeing pair is one epoch high and the next equally low, and in every case the
+       -- *successor* has query-fee events inside this gap whose value is exactly the delta. Epochs
+       -- 1342/1343 differ by ±47343610881192241620730 and 1343 holds 41 such events; 1363/1364 by
+       -- ±1016363782691576710331 with 6. Zero exceptions in that window.
+       --
+       -- A wide gap is a warning, not a verdict: 19 epochs above 1302 have fee events in this window
+       -- and only 4 of them disagree, because an event in the gap may genuinely belong to the
+       -- predecessor. It bounds the uncertainty, which is the honest thing available without an
+       -- L1-to-L2 block mapping. See nightswatchhq/nuthatch#1116.
+       COALESCE(first_seen - LAG(last_seen) OVER (ORDER BY epoch) - 1, 0) AS unobserved_gap_blocks,
        -- Honest about what this is: a boundary observed from events, not read off a contract. An
        -- epoch in which nothing happened leaves no row at all, which a consumer must expect.
        'observed' AS boundary_source
