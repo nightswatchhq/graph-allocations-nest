@@ -7,7 +7,7 @@ and no indexer serving them?** Someone paid to have that data produced and nobod
 
 ```sh
 nuthatch init --from https://github.com/nightswatchhq/graph-allocations-nest
-nuthatch dev --dir graph-allocations-nest --rpc https://your-archive-rpc --window 81920 --seal-direct
+nuthatch dev --dir graph-allocations-nest --rpc https://your-archive-rpc --state-rpc https://your-archive-rpc --window 81920 --seal-direct
 nuthatch sql --dir graph-allocations-nest "SELECT * FROM port_queue WHERE net_signal > 1000"
 ```
 
@@ -44,17 +44,41 @@ first figure would make the backfill 256 times longer.
 
 ## Contracts
 
-| Contract | Address | From block |
-|---|---|---|
-| `SubgraphService` | `0xb2Bb92d0DE618878E438b55D5846cfecD9301105` | 397,492,865 (2025-11-06) |
-| `L2Curation` | `0x22d78fb4bc72e191C765807f8891B5e1785C8014` | 42,449,403 (2022-11-30) |
+Eleven declarations on Arbitrum One, plus one pinned `eth_call`. Every address is from
+`graphprotocol/contracts` `addresses.json` (key `42161`) and every start block was found by binary
+search on `eth_getCode` against an archive RPC. The two staking rows are the **same proxy**: Horizon
+renamed every staking event, so the pre-Horizon shapes are decoded through a second ABI rather than
+lost (see the comments in `nuthatch.toml`).
 
-Both are transparent proxies; nuthatch resolves each to its implementation and vendors that ABI. Both
-start blocks were found by binary search on `eth_getCode` against an archive RPC. `SubgraphService`'s
-was independently confirmed by `nuthatch init`'s own detection, and `L2Curation`'s lands 182 blocks
-from `graph-staking-nest`'s pinned `42449585`, same day.
+| Alias | Contract | Address | From block |
+| --- | --- | --- | --- |
+| `subgraph_service` | SubgraphService | `0xb2bb92d0de618878e438b55d5846cfecd9301105` | 397,492,865 |
+| `curation` | L2Curation | `0x22d78fb4bc72e191c765807f8891b5e1785c8014` | 42,449,403 |
+| `epochs` | EpochManager | `0x5a843145c43d328b9bb7a4401d94918f131bb281` | 42,449,227 |
+| `disputes` | DisputeManager (Horizon) | `0x2fe023a575449acb698648ed21276293fa176f96` | 397,492,858 |
+| `escrow` | PaymentsEscrow | `0xf6fcc27aaf1fcd8b254498c9794451d82afc673e` | 397,491,106 |
+| `staking` | HorizonStaking, Horizon ABI | `0x00669a4cf01450b64e8a2a20e9b1fcb71e61ef03` | 42,449,585 |
+| `staking_legacy` | the same proxy, pre-Horizon ABI | `0x00669a4cf01450b64e8a2a20e9b1fcb71e61ef03` | 42,449,585 |
+| `gns` | L2GNS | `0xec9a7fb6cbc2e41926127929c2dce6e9c5d33bec` | 42,449,510 |
+| `service_registry` | ServiceRegistry | `0x072884c745c0a23144753335776c99be22588f8a` | 42,449,357 |
+| `rewards` | RewardsManager | `0x971b9d3d0ae3eca029cab5ea1fb0f72c85e6a525` | 42,449,638 |
+| `tally` | GraphTallyCollector | `0x8f69f5c07477ac46fbc491b1e6d91e2bb0111a9e` | 399,496,057 |
 
-The allowlist is deliberately narrow. `SubgraphService` emits 31 events; this nest carries four.
+The `[[calls]]` entry (`grt_total_supply`, a pinned `totalSupply()` on L2GraphToken every 100,000
+blocks) needs historical `eth_call`, so **the nest refuses to start without `--state-rpc`**. That is
+deliberate and it is not a `nuthatch.toml` field, because an archive endpoint usually carries a key
+and the config is pinned into the nest's content address. A deploy that forgets the flag crash-loops
+with a message saying exactly this; it happened on 2026-09-03.
+
+Three table names will surprise anyone writing a view, and they are all correct:
+
+- `AllocationClosed` on legacy staking and `RewardsDenied` on the rewards manager are **topic0
+  overloads** across the Horizon upgrade, and both halves fired on chain. nuthatch keeps both and
+  suffixes the tables with the first two bytes of topic0: `staking_legacy__allocation_closed_7203`
+  (9 arguments, to block 129,795,275) and `_f672` (8 arguments, since); `rewards__rewards_denied_07b6`
+  (legacy, with `epoch`) and `_9b13` (Horizon).
+- `RAVCollected` becomes **`tally__r_a_v_collected`**: the snake_case split does not know an acronym
+  when it sees one.
 
 ## Filter honestly, or the queue is a haystack
 
