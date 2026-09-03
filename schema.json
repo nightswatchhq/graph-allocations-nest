@@ -1,5 +1,5 @@
 {
-  "registry_hash": "0xed00eee9c9e061b3fda46282f1ea3b0cb4a62aa6bdc2b03cc5c675bd0c0a0694",
+  "registry_hash": "0xc3e677a28e0f098feab5e54a8c0f24f58b2127574904b9faf02365753af68717",
   "tables": [
     {
       "alias": "curation",
@@ -5262,6 +5262,190 @@
       "event": "ServiceProviderRegistered(address,bytes)",
       "table": "subgraph_service__service_provider_registered",
       "topic0": "0x159567bea25499a91f60e1fbb349ff2a1f8c1b2883198f25c1e12c99eddb44fa"
+    },
+    {
+      "alias": "tally",
+      "columns": [
+        {
+          "indexed": false,
+          "name": "block_number",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "block_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "block_timestamp",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "tx_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "log_index",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "address",
+          "sol_type": "implicit",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "_seq",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "paymentType",
+          "sol_type": "uint8",
+          "storage": "u64"
+        },
+        {
+          "indexed": true,
+          "name": "collectionId",
+          "sol_type": "bytes32",
+          "storage": "fixed_bytes"
+        },
+        {
+          "indexed": true,
+          "name": "payer",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "receiver",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": true,
+          "name": "dataService",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "tokens",
+          "sol_type": "uint256",
+          "storage": "word32"
+        }
+      ],
+      "event": "PaymentCollected(uint8,bytes32,address,address,address,uint256)",
+      "table": "tally__payment_collected",
+      "topic0": "0x481a17595c709e8f745444fb9ffc8f0b5e98458de94463971947f548e12bbdb4"
+    },
+    {
+      "alias": "tally",
+      "columns": [
+        {
+          "indexed": false,
+          "name": "block_number",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "block_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "block_timestamp",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "tx_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "log_index",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "address",
+          "sol_type": "implicit",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "_seq",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": true,
+          "name": "collectionId",
+          "sol_type": "bytes32",
+          "storage": "fixed_bytes"
+        },
+        {
+          "indexed": true,
+          "name": "payer",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "serviceProvider",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": true,
+          "name": "dataService",
+          "sol_type": "address",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "timestampNs",
+          "sol_type": "uint64",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "valueAggregate",
+          "sol_type": "uint128",
+          "storage": "word16"
+        },
+        {
+          "indexed": false,
+          "name": "metadata",
+          "sol_type": "bytes",
+          "storage": "bytes"
+        },
+        {
+          "indexed": false,
+          "name": "signature",
+          "sol_type": "bytes",
+          "storage": "bytes"
+        }
+      ],
+      "event": "RAVCollected(bytes32,address,address,address,uint64,uint128,bytes,bytes)",
+      "table": "tally__r_a_v_collected",
+      "topic0": "0x3943fc3b19ec289c87b57de7a8bf1448d81ced03d1806144ecaca4ba9e976056"
     },
     {
       "alias": "grt_total_supply",

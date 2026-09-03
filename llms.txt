@@ -13,6 +13,7 @@ A self-hosted blockchain index. Query it locally; there is no third-party API.
 - `gns` = 0xec9a7fb6cbc2e41926127929c2dce6e9c5d33bec
 - `service_registry` = 0x072884c745c0a23144753335776c99be22588f8a
 - `rewards` = 0x971b9d3d0ae3eca029cab5ea1fb0f72c85e6a525
+- `tally` = 0x8f69f5c07477ac46fbc491b1e6d91e2bb0111a9e
 
 ## Tables (one per contract event)
 - `curation__burned` - Burned(address,bytes32,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, curator, subgraphDeploymentID, tokens, signal)
@@ -84,6 +85,8 @@ A self-hosted blockchain index. Query it locally; there is no third-party API.
 - `subgraph_service__legacy_allocation_migrated` - LegacyAllocationMigrated(address,address,bytes32) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationId, subgraphDeploymentId)
 - `subgraph_service__query_fees_collected` - QueryFeesCollected(address,address,address,bytes32,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, serviceProvider, payer, allocationId, subgraphDeploymentId, tokensCollected, tokensCurators)
 - `subgraph_service__service_provider_registered` - ServiceProviderRegistered(address,bytes) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, serviceProvider, data)
+- `tally__payment_collected` - PaymentCollected(uint8,bytes32,address,address,address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, paymentType, collectionId, payer, receiver, dataService, tokens)
+- `tally__r_a_v_collected` - RAVCollected(bytes32,address,address,address,uint64,uint128,bytes,bytes) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, collectionId, payer, serviceProvider, dataService, timestampNs, valueAggregate, metadata, signature)
 - `grt_total_supply` -  (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, calldata, result, reverted, content_address)
 
 ## Live HTTP API (run `nuthatch dev`)

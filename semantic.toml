@@ -1227,6 +1227,39 @@ grain = "one row per ServiceProviderRegistered(address,bytes) event"
 data = "The `data` bytes parameter. (seeded from the ABI - edit semantic.toml to improve this)"
 serviceProvider = "The `serviceProvider` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
 
+[table.tally__payment_collected]
+description = "`PaymentCollected(uint8,bytes32,address,address,address,uint256)` events emitted by the `tally` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per PaymentCollected(uint8,bytes32,address,address,address,uint256) event"
+
+[table.tally__payment_collected.columns]
+collectionId = "The `collectionId` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+dataService = "The `dataService` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+payer = "The `payer` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+paymentType = "The `paymentType` uint8 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+receiver = "The `receiver` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+tokens = "The `tokens` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.tally__payment_collected.footguns]
+big_ints = ["tokens"]
+overflows_dec = ["tokens"]
+
+[table.tally__r_a_v_collected]
+description = "`RAVCollected(bytes32,address,address,address,uint64,uint128,bytes,bytes)` events emitted by the `tally` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per RAVCollected(bytes32,address,address,address,uint64,uint128,bytes,bytes) event"
+
+[table.tally__r_a_v_collected.columns]
+collectionId = "The `collectionId` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+dataService = "The `dataService` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+metadata = "The `metadata` bytes parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+payer = "The `payer` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+serviceProvider = "The `serviceProvider` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+signature = "The `signature` bytes parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+timestampNs = "The `timestampNs` uint64 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+valueAggregate = "The `valueAggregate` uint128 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.tally__r_a_v_collected.footguns]
+big_ints = ["valueAggregate"]
+
 [view.epoch_boundaries]
 description = "The (epoch, L2 block) window each epoch occupies. For epochs 1105 to 1370 the start is EXACT: EpochManager counts L1 blocks, so epoch(l1) = 92 + (l1 - 16687937) // 7200 from epochLength/lastLengthUpdateBlock/lastLengthUpdateEpoch read at the tip, binary-searched to the first L2 block whose header l1BlockNumber reaches that L1 boundary. Verified against the contract: currentEpoch() returns E at the boundary block and E-1 at the block before it. Those rows carry boundary_source 'l1-exact' and unobserved_gap_blocks 0, and every epoch in that range gets a row whether or not anything was observed in it. Outside the range there is no exact table and start_block falls back to the FIRST OBSERVED Horizon event, which is at or after the true start, so events in that gap are attributed to the predecessor; those rows carry 'observed' and unobserved_gap_blocks is the width of that uncertainty in L2 blocks. Computing the boundary in L2 block space instead is wrong by a factor of ~48 and is the trap this view exists to avoid. See nightswatchhq/nuthatch#1116."
 

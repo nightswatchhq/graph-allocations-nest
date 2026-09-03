@@ -255,6 +255,31 @@ events = [
     "RewardsDenied",
 ]
 
+# The collector, and the reason `lodestar_escrow_transactions` cannot carry an allocation for every
+# row. 75 escrow collections have no matching SubgraphService fee event, and the network subgraph
+# takes their `collectionId` from GraphTallyCollector's own `PaymentCollected` rather than from
+# SubgraphService - so until the collector is indexed here, the RAV ingest has nothing to join those
+# 75 on. `RAVCollected` alongside it because that is the receipt the collection was made against.
+#
+# ABI vendored verbatim from `/root/horizon-nest/abis/tally.json` on the Helsinki box, which has
+# been indexing this contract since block 399,485,933 - one artefact, two nests, so a signature can
+# never drift between them. It is a six-event trimmed file; the allowlist takes two of the six.
+#
+# The start block is **not** horizon-nest's. Binary search on `eth_getCode` puts deployment at
+# 399,496,057 - empty at 399,496,056, 6,608 bytes at 399,496,057 - which is 10,124 blocks *after*
+# what that nest pins. Nothing is lost by starting later: `eth_getLogs` over the whole gap,
+# 399,485,933 to 399,496,056, returns zero logs of any topic from this address, which it must,
+# because there is no code there to emit one. Not a proxy, unlike everything else here.
+[[contracts]]
+alias = "tally"
+address = "0x8f69f5c07477ac46fbc491b1e6d91e2bb0111a9e"
+start_block = 399496057
+abi = "abis/tally.json"
+events = [
+    "PaymentCollected",
+    "RAVCollected",
+]
+
 # RFC-0023 tier 3. `network-snapshot` wants GRT `totalSupply`, and deriving it would mean indexing
 # every L2GraphToken Transfer to sum mints minus burns - millions of rows for one number. A pinned
 # read samples it instead, at a fraction of the cost, and stays deterministic because the block is
