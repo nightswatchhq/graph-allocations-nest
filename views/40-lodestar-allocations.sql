@@ -43,11 +43,18 @@ fees AS (
   SELECT "allocationId" AS id, SUM(CAST("tokensCollected" AS HUGEINT)) AS query_fees_collected
   FROM subgraph_service__query_fees_collected GROUP BY 1
 ),
+-- The subgraph's `subgraphDeployment.signalledTokens`, exactly: what a curator paid in **net of
+-- the curation tax** (the tax is burned, it never reaches the pool), less what burns returned, plus
+-- query fees `Collected` into the pool. The first version of this fold summed gross deposits and
+-- knew nothing of `Collected`; measured against the subgraph on five deployments it was wrong on
+-- four, and the residual was `curatorFeeRewards` to the wei on every one (nuthatch#1078).
 signal AS (
   SELECT dep, SUM(tok) AS signalled_tokens FROM (
-    SELECT "subgraphDeploymentID" AS dep,  CAST(tokens AS HUGEINT) AS tok FROM curation__signalled
+    SELECT "subgraphDeploymentID" AS dep,  CAST(tokens AS HUGEINT) - CAST("curationTax" AS HUGEINT) AS tok FROM curation__signalled
     UNION ALL
     SELECT "subgraphDeploymentID" AS dep, -CAST(tokens AS HUGEINT) AS tok FROM curation__burned
+    UNION ALL
+    SELECT "subgraphDeploymentID" AS dep,  CAST(tokens AS HUGEINT) AS tok FROM curation__collected
   ) GROUP BY 1
 )
 SELECT c.id,

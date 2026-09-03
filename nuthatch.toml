@@ -36,6 +36,13 @@ abi = "abis/curation.json"
 events = [
     "Signalled",
     "Burned",
+    # `Collected` is query fees paid into a deployment's curation pool. The subgraph's
+    # `subgraphDeployment.signalledTokens` is deposits net of curation tax, less burns, **plus** these
+    # collections - measured on five deployments against the subgraph (nuthatch#1078): the residual
+    # after netting the tax was `curatorFeeRewards` to the wei on every one, and zero where no fee
+    # had ever been collected. Without this event the fold is blind to it and reads low by up to
+    # several percent on a deployment that has earned fees.
+    "Collected",
 ]
 
 [[contracts]]
