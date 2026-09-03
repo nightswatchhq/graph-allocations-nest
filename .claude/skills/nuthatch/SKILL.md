@@ -14,6 +14,9 @@ Contracts indexed on arbitrum-one:
 - `staking` = 0x00669a4cf01450b64e8a2a20e9b1fcb71e61ef03
 - `staking_legacy` = 0x00669a4cf01450b64e8a2a20e9b1fcb71e61ef03
 - `gns` = 0xec9a7fb6cbc2e41926127929c2dce6e9c5d33bec
+- `service_registry` = 0x072884c745c0a23144753335776c99be22588f8a
+- `rewards` = 0x971b9d3d0ae3eca029cab5ea1fb0f72c85e6a525
+- `tally` = 0x8f69f5c07477ac46fbc491b1e6d91e2bb0111a9e
 
 Data is local - never call an external API for it.
 

@@ -21,6 +21,11 @@ events = [
     "LegacyAllocationMigrated",
     "IndexingRewardsCollected",
     "QueryFeesCollected",
+    # `ServiceProviderRegistered` is the Horizon successor to `ServiceRegistry.ServiceRegistered`:
+    # it carries the indexer's registration `data` blob rather than a `url`/`geohash` pair, so it
+    # says an indexer exists on SubgraphService without saying where to reach it. The url and the
+    # geohash still only come off the legacy `service_registry` contract below.
+    "ServiceProviderRegistered",
 ]
 
 [[contracts]]
@@ -91,6 +96,29 @@ events = [
     "TokensUndelegated",
     "DelegatedTokensWithdrawn",
     "StakeDelegatedWithdrawn",
+    # Everything below is what an `indexer` entity needs and the two lists above do not carry
+    # (nuthatch#1078). `lockedTokens` and `delegatedThawingTokens` are thaw state, and Horizon
+    # expresses a thaw as a request rather than a balance, so the running total is the created
+    # requests less the fulfilled ones - both the singular and the plural fulfilment event, because
+    # a batched fulfilment does not emit the singular one. `provisionedTokens` needs
+    # `ProvisionThawed` for the same reason. `indexingRewardCut` and `queryFeeCut` are
+    # `DelegationFeeCutSet` in Horizon; `delegatorParameterCooldown` and
+    # `lastDelegationParameterUpdate` have no Horizon equivalent at all and come only from the
+    # legacy `DelegationParametersUpdated` below.
+    "ThawRequestCreated",
+    "ThawRequestFulfilled",
+    "ThawRequestsFulfilled",
+    "ProvisionThawed",
+    "DelegationFeeCutSet",
+    "OperatorSet",
+    "HorizonStakeLocked",
+    # The two slashing events. `ProvisionSlashed` has never fired (#1125); it is declared so that
+    # the first one to fire is decoded rather than dropped, and `DelegationSlashed` alongside it
+    # because a slash that reaches the delegation pool debits `delegatedTokens`, not `stakedTokens`.
+    # `TokensToDelegationPoolAdded` is the credit in the other direction.
+    "ProvisionSlashed",
+    "DelegationSlashed",
+    "TokensToDelegationPoolAdded",
 ]
 
 # The same proxy address as `staking`, deliberately, and a second entry rather than a merged ABI.
@@ -129,6 +157,38 @@ events = [
     # not declare it. Shape confirmed against a real log rather than recalled - one indexed
     # `indexer`, then `tokens`/`reward`/`beneficiary`, with `reward` exactly half of `tokens`.
     "StakeSlashed",
+    # The pre-Horizon half of the `indexer` entity (nuthatch#1078). Horizon carries none of this:
+    # `DelegationParametersUpdated` is the only source of `delegatorParameterCooldown` and
+    # `lastDelegationParameterUpdate` anywhere, and the legacy allocation lifecycle is where
+    # `allocatedTokens` and `allocationCount` come from for every allocation opened before
+    # SubgraphService existed at block 397,492,865.
+    #
+    # Two further implementations behind the same proxy, both read from Sourcify:
+    # `0x2787f893…`, live at block 100,000,000, for the pre-exponential-rebates shapes, and
+    # `0x0dae36ad…` (already named above) for what replaced them.
+    "DelegationParametersUpdated",
+    "AllocationCreated",
+    # `AllocationClosed` is an *overload*, and both halves fired here. The 9-argument form carrying
+    # `effectiveAllocation` ran from block 66,203,289 to 129,795,275 (7,564 logs); exponential
+    # rebates dropped that argument and the 8-argument form has run since (over the 10,000 an
+    # `eth_getLogs` sweep will return). Both are in the ABI, so nuthatch registers both and suffixes
+    # the tables with the first two bytes of topic0: `staking_legacy__allocation_closed_7203` is the
+    # 9-argument form, `staking_legacy__allocation_closed_f672` the 8-argument one. Declaring only
+    # one would leave every allocation of the other era open forever, which inflates
+    # `allocatedTokens` without ever correcting itself.
+    "AllocationClosed",
+    # Query fees, in the three shapes the contract has used. `AllocationCollected` (2,127 logs) and
+    # `RebateClaimed` (2,227) are the pre-exponential-rebates pair and both stop at block ~129.9M;
+    # `RebateCollected` replaced them. `queryFeesCollected` is the sum across all three.
+    "AllocationCollected",
+    "RebateClaimed",
+    "RebateCollected",
+    # `StakeLocked` is legacy `lockedTokens`, the thawing withdrawal the Horizon events express as
+    # a thaw request instead. `SetOperator` and `SetRewardsDestination` are the legacy forms of
+    # `OperatorSet` and of a rewards destination Horizon has no event for.
+    "StakeLocked",
+    "SetOperator",
+    "SetRewardsDestination",
 ]
 
 [[contracts]]
@@ -149,6 +209,75 @@ events = [
     "SignalMinted",
     "SignalBurned",
     "GRTWithdrawn",
+]
+
+# `url` and `geoHash` on an `indexer` exist nowhere else on chain. Horizon's
+# `ServiceProviderRegistered` carries an opaque `data` blob instead, so the legacy ServiceRegistry
+# is still the only contract that says where an indexer can be reached. 394 `ServiceRegistered`
+# logs from block 59,513,031 to 486,990,285, and 2 `ServiceUnregistered` - the pair is the whole
+# lifecycle, and an unregistration is what makes a stale url disappear rather than persist.
+#
+# Address from `graphprotocol/contracts` `addresses.json`, key `42161`, contract `ServiceRegistry`.
+# Start block by binary search on `eth_getCode`: empty at 42,449,356, 2,284 bytes at 42,449,357.
+# One implementation ever - the proxy still points at `0xd32569da…`, the ABI vendored here - so
+# unlike staking this needs no second entry.
+[[contracts]]
+alias = "service_registry"
+address = "0x072884c745c0a23144753335776c99be22588f8a"
+start_block = 42449357
+abi = "abis/service-registry.json"
+events = [
+    "ServiceRegistered",
+    "ServiceUnregistered",
+]
+
+# `rewardsEarned`. One alias rather than the two `staking` needed, because the rename here did not
+# collide: `RewardsAssigned` became `HorizonRewardsAssigned` and both names survive in one ABI.
+# `RewardsDenied` did not get renamed and *is* an overload - the legacy form carries `epoch` and the
+# Horizon form does not - so nuthatch suffixes those two tables `_07b6` (legacy) and `_9b13`
+# (Horizon). A denial is not a debit; it is why an allocation a caller expects to see rewards for
+# has none, which is a question Lodestar gets asked and cannot currently answer.
+#
+# Address from `addresses.json` key `42161`, contract `RewardsManager`. Start block by binary search
+# on `eth_getCode`: empty at 42,449,637, 2,284 bytes at 42,449,638. The ABI is hand-vendored from
+# two Sourcify-verified implementations of this proxy, the same way `abis/staking-legacy.json` is:
+# `0x5912afc5…`, live at block 400,000,000, for the legacy pair, and the current `0xa13cff50…` for
+# the Horizon pair. The current implementation does not declare `RewardsAssigned` at all, so
+# vendoring it alone would lose every reward assigned before block ~408,847,369.
+[[contracts]]
+alias = "rewards"
+address = "0x971b9d3d0ae3eca029cab5ea1fb0f72c85e6a525"
+start_block = 42449638
+abi = "abis/rewards.json"
+events = [
+    "RewardsAssigned",
+    "HorizonRewardsAssigned",
+    "RewardsDenied",
+]
+
+# The collector, and the reason `lodestar_escrow_transactions` cannot carry an allocation for every
+# row. 75 escrow collections have no matching SubgraphService fee event, and the network subgraph
+# takes their `collectionId` from GraphTallyCollector's own `PaymentCollected` rather than from
+# SubgraphService - so until the collector is indexed here, the RAV ingest has nothing to join those
+# 75 on. `RAVCollected` alongside it because that is the receipt the collection was made against.
+#
+# ABI vendored verbatim from `/root/horizon-nest/abis/tally.json` on the Helsinki box, which has
+# been indexing this contract since block 399,485,933 - one artefact, two nests, so a signature can
+# never drift between them. It is a six-event trimmed file; the allowlist takes two of the six.
+#
+# The start block is **not** horizon-nest's. Binary search on `eth_getCode` puts deployment at
+# 399,496,057 - empty at 399,496,056, 6,608 bytes at 399,496,057 - which is 10,124 blocks *after*
+# what that nest pins. Nothing is lost by starting later: `eth_getLogs` over the whole gap,
+# 399,485,933 to 399,496,056, returns zero logs of any topic from this address, which it must,
+# because there is no code there to emit one. Not a proxy, unlike everything else here.
+[[contracts]]
+alias = "tally"
+address = "0x8f69f5c07477ac46fbc491b1e6d91e2bb0111a9e"
+start_block = 399496057
+abi = "abis/tally.json"
+events = [
+    "PaymentCollected",
+    "RAVCollected",
 ]
 
 # RFC-0023 tier 3. `network-snapshot` wants GRT `totalSupply`, and deriving it would mean indexing
