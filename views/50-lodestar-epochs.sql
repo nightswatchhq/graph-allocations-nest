@@ -24,35 +24,239 @@ WITH observed AS (
 per_epoch AS (
   SELECT epoch, MIN(block_number) AS first_seen, MAX(block_number) AS last_seen
   FROM observed GROUP BY 1
+),
+-- **The boundaries, read off EpochManager's own arithmetic rather than guessed from events.**
+--
+-- The header above is still right that `start = anchor + (epoch - anchor_epoch) * 7200` is wrong in
+-- L2 block space. It is exactly right in **L1** block space, which is the space EpochManager counts
+-- in. Read at the tip, the contract reports `epochLength()` 7200, `lastLengthUpdateBlock()`
+-- 16687937 and `lastLengthUpdateEpoch()` 92, so
+--
+--     epoch(l1) = 92 + (l1 - 16687937) // 7200
+--
+-- and because the last length update was at epoch 92, one linear segment covers this whole range -
+-- no piecewise reconstruction. That formula reproduces `currentEpoch()` exactly at six L2 blocks
+-- spanning 400M to 501M, and `currentEpochBlock()` returns 25889537, which is precisely the
+-- formula's L1 start for epoch 1370. The contract agrees with the arithmetic about its own boundary.
+--
+-- The L1 boundary is then mapped to L2 by binary-searching for the first L2 block whose header
+-- `l1BlockNumber` reaches it: 3,576 block fetches for all 176 boundaries, against the 459 million
+-- an indexed `blocks` table would cost (RFC-0036 §4.2 fetches every block in the window, by design).
+-- Every sampled boundary was checked against the contract: `currentEpoch()` returns E at the
+-- boundary block and E-1 at the block before it. See nightswatchhq/nuthatch#1116.
+--
+-- **This table is static and ends at epoch 1370.** Epochs past it fall back to the observed
+-- derivation below and are labelled as such, so the view degrades rather than lying. Extending it is
+-- a rerun of the same search; making it self-maintaining is the `l1_block_number` work in #1116.
+exact_starts(epoch, start_block) AS (
+  VALUES
+    (1195, 440440597),
+    (1196, 440787231),
+    (1197, 441134814),
+    (1198, 441481438),
+    (1199, 441827978),
+    (1200, 442172847),
+    (1201, 442519442),
+    (1202, 442866566),
+    (1203, 443213761),
+    (1204, 443561251),
+    (1205, 443908343),
+    (1206, 444255442),
+    (1207, 444602921),
+    (1208, 444950000),
+    (1209, 445296930),
+    (1210, 445644431),
+    (1211, 445992452),
+    (1212, 446340160),
+    (1213, 446685976),
+    (1214, 447030618),
+    (1215, 447376523),
+    (1216, 447723047),
+    (1217, 448069895),
+    (1218, 448416005),
+    (1219, 448762198),
+    (1220, 449107884),
+    (1221, 449453885),
+    (1222, 449801403),
+    (1223, 450148611),
+    (1224, 450495654),
+    (1225, 450842657),
+    (1226, 451189738),
+    (1227, 451536513),
+    (1228, 451882872),
+    (1229, 452228190),
+    (1230, 452573362),
+    (1231, 452919034),
+    (1232, 453264829),
+    (1233, 453609989),
+    (1234, 453955512),
+    (1235, 454301014),
+    (1236, 454643687),
+    (1237, 454988877),
+    (1238, 455336295),
+    (1239, 455683150),
+    (1240, 456027983),
+    (1241, 456372404),
+    (1242, 456718741),
+    (1243, 457065388),
+    (1244, 457410705),
+    (1245, 457756949),
+    (1246, 458103550),
+    (1247, 458448292),
+    (1248, 458790376),
+    (1249, 459132833),
+    (1250, 459479825),
+    (1251, 459825370),
+    (1252, 460171183),
+    (1253, 460516766),
+    (1254, 460862419),
+    (1255, 461207550),
+    (1256, 461554204),
+    (1257, 461900364),
+    (1258, 462245878),
+    (1259, 462593059),
+    (1260, 462939933),
+    (1261, 463285798),
+    (1262, 463628947),
+    (1263, 463973418),
+    (1264, 464319256),
+    (1265, 464664483),
+    (1266, 465010749),
+    (1267, 465355955),
+    (1268, 465700901),
+    (1269, 466044535),
+    (1270, 466387661),
+    (1271, 466730395),
+    (1272, 467075376),
+    (1273, 467421631),
+    (1274, 467767728),
+    (1275, 468113582),
+    (1276, 468458499),
+    (1277, 468803001),
+    (1278, 469148924),
+    (1279, 469496202),
+    (1280, 469843826),
+    (1281, 470191656),
+    (1282, 470540180),
+    (1283, 470884787),
+    (1284, 471229646),
+    (1285, 471573861),
+    (1286, 471919463),
+    (1287, 472264990),
+    (1288, 472610988),
+    (1289, 472956673),
+    (1290, 473299720),
+    (1291, 473643935),
+    (1292, 473988831),
+    (1293, 474331908),
+    (1294, 474677055),
+    (1295, 475022363),
+    (1296, 475367154),
+    (1297, 475712399),
+    (1298, 476059327),
+    (1299, 476406214),
+    (1300, 476753407),
+    (1301, 477101419),
+    (1302, 477449353),
+    (1303, 477796763),
+    (1304, 478143752),
+    (1305, 478491220),
+    (1306, 478838716),
+    (1307, 479186169),
+    (1308, 479533867),
+    (1309, 479881782),
+    (1310, 480228358),
+    (1311, 480575901),
+    (1312, 480923184),
+    (1313, 481269925),
+    (1314, 481616707),
+    (1315, 481964060),
+    (1316, 482311734),
+    (1317, 482658477),
+    (1318, 483005724),
+    (1319, 483352537),
+    (1320, 483699743),
+    (1321, 484047177),
+    (1322, 484394098),
+    (1323, 484740625),
+    (1324, 485087064),
+    (1325, 485433569),
+    (1326, 485780390),
+    (1327, 486127376),
+    (1328, 486474062),
+    (1329, 486820762),
+    (1330, 487167899),
+    (1331, 487514380),
+    (1332, 487859735),
+    (1333, 488206502),
+    (1334, 488553403),
+    (1335, 488900266),
+    (1336, 489246549),
+    (1337, 489593224),
+    (1338, 489939948),
+    (1339, 490285420),
+    (1340, 490629661),
+    (1341, 490975360),
+    (1342, 491321230),
+    (1343, 491667234),
+    (1344, 492012615),
+    (1345, 492358435),
+    (1346, 492702008),
+    (1347, 493046521),
+    (1348, 493392434),
+    (1349, 493737939),
+    (1350, 494081962),
+    (1351, 494427277),
+    (1352, 494772464),
+    (1353, 495116037),
+    (1354, 495459386),
+    (1355, 495804075),
+    (1356, 496148119),
+    (1357, 496494341),
+    (1358, 496840971),
+    (1359, 497187470),
+    (1360, 497531422),
+    (1361, 497875935),
+    (1362, 498221121),
+    (1363, 498564843),
+    (1364, 498906669),
+    (1365, 499251341),
+    (1366, 499595800),
+    (1367, 499938326),
+    (1368, 500283436),
+    (1369, 500629598),
+    (1370, 500973867)
+),
+-- **Every epoch in the exact range gets a row, observed or not.** The observed-only derivation could
+-- not do this: an epoch with no `AllocationCreated` and no `IndexingRewardsCollected` produced no
+-- row at all. Its blocks were not dropped - the `LEAD` rule above stretched the *predecessor's*
+-- `end_block` straight across the missing epoch, so everything inside it was filed one epoch out.
+-- The same misplacement as the gap problem, and it conserves for the same reason. It is **not** an
+-- explanation for #1117's non-conserving residue, and should not be offered as one.
+boundaries AS (
+  SELECT CAST(x.epoch AS HUGEINT) AS epoch,
+         CAST(x.start_block AS BIGINT) AS start_block,
+         'l1-exact' AS boundary_source
+  FROM exact_starts x
+  UNION ALL
+  SELECT p.epoch, CAST(p.first_seen AS BIGINT), 'observed'
+  FROM per_epoch p
+  WHERE NOT EXISTS (SELECT 1 FROM exact_starts x WHERE CAST(x.epoch AS HUGEINT) = p.epoch)
 )
-SELECT epoch,
-       first_seen AS start_block,
-       -- An epoch ends where the next one is first seen. The newest epoch has no successor yet, so it
-       -- runs to its own last observation - open-ended rather than wrong.
-       COALESCE(LEAD(first_seen) OVER (ORDER BY epoch) - 1, last_seen) AS end_block,
-       last_seen,
-       -- **The width of the uncertainty, exposed rather than implied.** An epoch's true start lies
-       -- somewhere between the previous epoch's last observation and this one's first; everything in
-       -- that window is attributed to the predecessor by the `end_block` rule above, and the subgraph
-       -- may put some of it here instead. This column is that window's size in L2 blocks, so a
-       -- consumer can tell a boundary that is nailed down from one that is a few thousand blocks wide.
-       --
-       -- Measured against the Graph Network subgraph at pinned block 501157502, this is the whole
-       -- remaining disagreement in `query_fees_collected` and `signalled_tokens` from epoch 1302 up:
-       -- every disagreeing pair is one epoch high and the next equally low, and in every case the
-       -- *successor* has query-fee events inside this gap whose value is exactly the delta. Epochs
-       -- 1342/1343 differ by ±47343610881192241620730 and 1343 holds 41 such events; 1363/1364 by
-       -- ±1016363782691576710331 with 6. Zero exceptions in that window.
-       --
-       -- A wide gap is a warning, not a verdict: 19 epochs above 1302 have fee events in this window
-       -- and only 4 of them disagree, because an event in the gap may genuinely belong to the
-       -- predecessor. It bounds the uncertainty, which is the honest thing available without an
-       -- L1-to-L2 block mapping. See nightswatchhq/nuthatch#1116.
-       COALESCE(first_seen - LAG(last_seen) OVER (ORDER BY epoch) - 1, 0) AS unobserved_gap_blocks,
-       -- Honest about what this is: a boundary observed from events, not read off a contract. An
-       -- epoch in which nothing happened leaves no row at all, which a consumer must expect.
-       'observed' AS boundary_source
-FROM per_epoch;
+SELECT b.epoch,
+       b.start_block,
+       -- An epoch ends where the next one starts. The newest has no successor yet, so it runs to its
+       -- own last observation - open-ended rather than wrong.
+       COALESCE(LEAD(b.start_block) OVER (ORDER BY b.epoch) - 1, p.last_seen, b.start_block) AS end_block,
+       p.last_seen,
+       -- Zero where the boundary is exact: there is no unobserved window left to warn about. For an
+       -- observed row it keeps its old meaning, the width of the gap the true start could lie in.
+       CASE WHEN b.boundary_source = 'l1-exact' THEN 0
+            ELSE COALESCE(p.first_seen - LAG(p.last_seen) OVER (ORDER BY b.epoch) - 1, 0)
+       END AS unobserved_gap_blocks,
+       b.boundary_source
+FROM boundaries b
+LEFT JOIN per_epoch p ON p.epoch = b.epoch;
 
 -- The per-epoch totals Lodestar wants. Rewards carry their own epoch; query fees do not, so they are
 -- bucketed by block against the boundaries above.
