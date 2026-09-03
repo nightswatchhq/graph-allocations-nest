@@ -11,6 +11,9 @@ Contracts indexed on arbitrum-one:
 - `epochs` = 0x5a843145c43d328b9bb7a4401d94918f131bb281
 - `disputes` = 0x2fe023a575449acb698648ed21276293fa176f96
 - `escrow` = 0xf6fcc27aaf1fcd8b254498c9794451d82afc673e
+- `staking` = 0x00669a4cf01450b64e8a2a20e9b1fcb71e61ef03
+- `staking_legacy` = 0x00669a4cf01450b64e8a2a20e9b1fcb71e61ef03
+- `gns` = 0xec9a7fb6cbc2e41926127929c2dce6e9c5d33bec
 
 Data is local - never call an external API for it.
 
