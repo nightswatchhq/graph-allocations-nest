@@ -3,7 +3,7 @@
 -- This is the one module in the migration that is genuinely an *aggregate* rather than a table, which
 -- is why it was ranked last. Fourteen protocol-wide numbers, each a fold over a different contract's
 -- events, and one that is not derivable at all without indexing millions of token transfers - so that
--- one is a pinned `eth_call` instead (RFC-0023 tier 3, `grt_total_supply`).
+-- one is a pinned `eth_call` instead (RFC-0023 tier 3, `total_supply` and `issuance_per_block`).
 CREATE VIEW lodestar_network AS
 WITH staked AS (
   -- Netted **per entity** before counting. Counting rows with `t > 0` instead answers "who ever
@@ -129,12 +129,51 @@ subgraphs AS (
          ) AS n_active
   FROM gns__subgraph_published
 ),
--- The newest pinned read. `reverted` would mean the call failed at that block, which is a fact about
--- chain state rather than a zero, so it is excluded rather than counted as none.
+-- The newest pinned reads. `reverted` would mean the call failed at that block, which is a fact about
+-- chain state rather than a zero, so it is excluded rather than counted as none. `issuance_per_block`
+-- reverts on every block before 75,279,040, where the getter did not yet exist, so on a nest that has
+-- not reached that height the column is null rather than wrong.
+--
+-- `result` is the raw 32-byte return word, kept as bytes because a call result has no ABI type on
+-- this side. Both of these are `uint256`, so the decode is the last 32 hex characters folded
+-- base-16 into a HUGEINT: 128 bits, which holds anything up to 3.4e38 and so cannot overflow on a
+-- token whose supply is 3.5e27. The `_raw` column stays as it was, because it is what a caller
+-- checks the decode against.
 supply AS (
-  SELECT CAST(result AS VARCHAR) AS raw, block_number
-  FROM grt_total_supply WHERE reverted = false
+  SELECT CAST(result AS VARCHAR) AS raw,
+         list_reduce(
+           [CAST(strpos('0123456789abcdef', c) - 1 AS HUGEINT)
+            FOR c IN string_split(substr(lower(CAST(result AS VARCHAR)), -32), '')],
+           lambda acc, d: acc * 16 + d
+         ) AS value,
+         block_number
+  FROM total_supply WHERE reverted = false
   ORDER BY block_number DESC LIMIT 1
+),
+issuance AS (
+  SELECT list_reduce(
+           [CAST(strpos('0123456789abcdef', c) - 1 AS HUGEINT)
+            FOR c IN string_split(substr(lower(CAST(result AS VARCHAR)), -32), '')],
+           lambda acc, d: acc * 16 + d
+         ) AS value,
+         block_number
+  FROM issuance_per_block WHERE reverted = false
+  ORDER BY block_number DESC LIMIT 1
+),
+-- Bridge flow, and it is *not* the subgraph's `totalGRTMinted` / `totalGRTBurned`. Those count every
+-- mint and burn, including the indexing rewards minted as a `Transfer` from the zero address; this
+-- pair is the L1<->L2 bridge alone. `Transfer` is deliberately not indexed - see the comment on the
+-- `graph_token` contract - so the bridge half is what a nest can state exactly today.
+bridge AS (
+  SELECT (SELECT SUM(CAST(amount AS HUGEINT)) FROM graph_token__bridge_minted) AS minted,
+         (SELECT SUM(CAST(amount AS HUGEINT)) FROM graph_token__bridge_burned) AS burned
+),
+-- All-time totals, folded from the epoch view rather than recomputed from the events, so that the
+-- two surfaces cannot disagree: `/api/epochs` and `/api/grt-flow` read one definition.
+epoch_totals AS (
+  SELECT SUM(total_rewards)        AS indexing_rewards,
+         SUM(query_fees_collected) AS query_fees
+  FROM lodestar_epochs
 )
 SELECT (SELECT total      FROM staked)     AS total_tokens_staked,
        (SELECT total      FROM delegated)  AS total_delegated_tokens,
@@ -142,6 +181,13 @@ SELECT (SELECT total      FROM staked)     AS total_tokens_staked,
        (SELECT total      FROM allocated)  AS total_tokens_allocated,
        (SELECT raw        FROM supply)     AS total_supply_raw,
        (SELECT block_number FROM supply)   AS total_supply_at_block,
+       (SELECT value      FROM supply)     AS total_supply,
+       (SELECT value      FROM issuance)   AS issuance_per_block,
+       (SELECT block_number FROM issuance) AS issuance_per_block_at_block,
+       (SELECT minted     FROM bridge)     AS bridge_minted,
+       (SELECT burned     FROM bridge)     AS bridge_burned,
+       (SELECT indexing_rewards FROM epoch_totals) AS total_indexing_rewards,
+       (SELECT query_fees FROM epoch_totals)       AS total_query_fees,
        (SELECT n_all      FROM staked)     AS indexer_count,
        (SELECT n_positive FROM staked)     AS staked_indexers_count,
        (SELECT n_all      FROM delegated)  AS delegator_count,

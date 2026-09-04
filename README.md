@@ -44,7 +44,7 @@ first figure would make the backfill 256 times longer.
 
 ## Contracts
 
-Eleven declarations on Arbitrum One, plus one pinned `eth_call`. Every address is from
+Twelve declarations on Arbitrum One, plus two pinned `eth_call`s. Every address is from
 `graphprotocol/contracts` `addresses.json` (key `42161`) and every start block was found by binary
 search on `eth_getCode` against an archive RPC. The two staking rows are the **same proxy**: Horizon
 renamed every staking event, so the pre-Horizon shapes are decoded through a second ABI rather than
@@ -63,12 +63,18 @@ lost (see the comments in `nuthatch.toml`).
 | `service_registry` | ServiceRegistry | `0x072884c745c0a23144753335776c99be22588f8a` | 42,449,357 |
 | `rewards` | RewardsManager | `0x971b9d3d0ae3eca029cab5ea1fb0f72c85e6a525` | 42,449,638 |
 | `tally` | GraphTallyCollector | `0x8f69f5c07477ac46fbc491b1e6d91e2bb0111a9e` | 399,496,057 |
+| `graph_token` | L2GraphToken, bridge events only | `0x9623063377ad1b27544c965ccd7342f7ea7e88c7` | 42,449,227 |
 
-The `[[calls]]` entry (`grt_total_supply`, a pinned `totalSupply()` on L2GraphToken every 100,000
-blocks) needs historical `eth_call`, so **the nest refuses to start without `--state-rpc`**. That is
+The `[[calls]]` entries (`total_supply`, a pinned `totalSupply()` on L2GraphToken, and
+`issuance_per_block`, `issuancePerBlock()` on the RewardsManager, both every 100,000 blocks) need
+historical `eth_call`, so **the nest refuses to start without `--state-rpc`**. That is
 deliberate and it is not a `nuthatch.toml` field, because an archive endpoint usually carries a key
 and the config is pinned into the nest's content address. A deploy that forgets the flag crash-loops
-with a message saying exactly this; it happened on 2026-09-03.
+with a message saying exactly this; it happened on 2026-09-03. Note that the first endpoint in
+`rpc_urls`, `https://arb1.arbitrum.io/rpc`, does **not** serve historic state - `eth_call` and
+`eth_getCode` at an old block answer `-32000 … state is not available` - so it cannot be the
+`--state-rpc` even though it serves historic logs perfectly well; `https://arb-pokt.nodies.app` can,
+and so can any keyed archive endpoint.
 
 Three table names will surprise anyone writing a view, and they are all correct:
 

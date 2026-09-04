@@ -98,5 +98,18 @@
       }
     ],
     "anonymous": false
+  },
+  {
+    "name": "ParameterUpdated",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "param",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      }
+    ],
+    "anonymous": false
   }
 ]
