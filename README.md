@@ -66,11 +66,15 @@ lost (see the comments in `nuthatch.toml`).
 | `graph_token` | L2GraphToken, bridge events only | `0x9623063377ad1b27544c965ccd7342f7ea7e88c7` | 42,449,227 |
 
 The `[[calls]]` entries (`total_supply`, a pinned `totalSupply()` on L2GraphToken, and
-`issuance_per_block`, `issuancePerBlock()` on the RewardsManager, both every 1,000 blocks) need
+`issuance_per_block`, `issuancePerBlock()` on the RewardsManager, both every 100,000 blocks) need
 historical `eth_call`, so **the nest refuses to start without `--state-rpc`**. That is
 deliberate and it is not a `nuthatch.toml` field, because an archive endpoint usually carries a key
 and the config is pinned into the nest's content address. A deploy that forgets the flag crash-loops
-with a message saying exactly this; it happened on 2026-09-03.
+with a message saying exactly this; it happened on 2026-09-03. Note that the first endpoint in
+`rpc_urls`, `https://arb1.arbitrum.io/rpc`, does **not** serve historic state - `eth_call` and
+`eth_getCode` at an old block answer `-32000 … state is not available` - so it cannot be the
+`--state-rpc` even though it serves historic logs perfectly well; `https://arb-pokt.nodies.app` can,
+and so can any keyed archive endpoint.
 
 Three table names will surprise anyone writing a view, and they are all correct:
 

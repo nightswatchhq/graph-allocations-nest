@@ -321,17 +321,24 @@ events = [
 # read samples it instead, at a fraction of the cost, and stays deterministic because the block is
 # pinned. Needs `--state-rpc`.
 #
-# Renamed from `grt_total_supply` and sampled ten times more often than the 100,000 it used to be:
-# `lodestar_network` now serves `/api/grt-flow`, which reads it as a live figure rather than a
-# footnote. One entry, not two - a second call to the same selector at a coarser cadence would be a
-# strict subset of these blocks and pay for the same answer twice.
+# Renamed from `grt_total_supply`, same cadence. One entry, not two - a second call to the same
+# selector at a different cadence would be a strict subset of these blocks and pay for the same
+# answer twice.
+#
+# The cadence stays at 100,000 because `/api/grt-flow` reads the *current* figure, which is always
+# the newest sample; a finer grid buys resolution on history nothing asks for. At 1,000 the two calls
+# below cost ~884,000 `eth_call`s across the backfill against ~9,000 here.
 [[calls]]
 name = "total_supply"
 contract = "0x9623063377AD1B27544C965cCd7342f7EA7e88C7"
 calldata = "0x18160ddd"
-every = 1000
+every = 100000
 
 # `networkGRTIssuancePerBlock`, the same way. Selector is keccak256("issuancePerBlock()")[:4].
+#
+# Coarse on purpose, and this is the one where it costs nothing at all: `rewards__parameter_updated`
+# dates every parameter change to the exact block, so the sample says what issuance *is* and the
+# event says when it moved. A finer grid would state the same two facts more expensively.
 #
 # `start` is not the proxy's deployment block, because the getter is younger than the proxy: the
 # call reverts at 75,279,039 and answers 0 at 75,279,040, found by binary search on the public
@@ -342,5 +349,5 @@ every = 1000
 name = "issuance_per_block"
 contract = "0x971B9d3d0Ae3ECa029CAB5eA1fB0F72c85e6a525"
 calldata = "0x6c080f18"
-every = 1000
+every = 100000
 start = 75279040
