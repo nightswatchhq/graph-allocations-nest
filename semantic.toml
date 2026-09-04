@@ -27,6 +27,18 @@ overflows_dec = [
     "signal",
 ]
 
+[table.curation__collected]
+description = "`Collected(bytes32,uint256)` events emitted by the `curation` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per Collected(bytes32,uint256) event"
+
+[table.curation__collected.columns]
+subgraphDeploymentID = "The `subgraphDeploymentID` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+tokens = "The `tokens` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.curation__collected.footguns]
+big_ints = ["tokens"]
+overflows_dec = ["tokens"]
+
 [table.curation__signalled]
 description = "`Signalled(address,bytes32,uint256,uint256,uint256)` events emitted by the `curation` contract. (seeded from the ABI - edit semantic.toml to improve this)"
 grain = "one row per Signalled(address,bytes32,uint256,uint256,uint256) event"
@@ -410,17 +422,41 @@ subgraphID = "The `subgraphID` uint256 parameter. (seeded from the ABI - edit se
 big_ints = ["subgraphID"]
 overflows_dec = ["subgraphID"]
 
-[table.grt_total_supply]
-description = "`` events emitted by the `grt_total_supply` contract. (seeded from the ABI - edit semantic.toml to improve this)"
-grain = "one row per  event"
+[table.graph_token__bridge_burned]
+description = "`BridgeBurned(address,uint256)` events emitted by the `graph_token` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per BridgeBurned(address,uint256) event"
 
-[table.grt_total_supply.columns]
+[table.graph_token__bridge_burned.columns]
+account = "The `account` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+amount = "The `amount` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.graph_token__bridge_burned.footguns]
+big_ints = ["amount"]
+overflows_dec = ["amount"]
+
+[table.graph_token__bridge_minted]
+description = "`BridgeMinted(address,uint256)` events emitted by the `graph_token` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per BridgeMinted(address,uint256) event"
+
+[table.graph_token__bridge_minted.columns]
+account = "The `account` address parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+amount = "The `amount` uint256 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.graph_token__bridge_minted.footguns]
+big_ints = ["amount"]
+overflows_dec = ["amount"]
+
+[table.issuance_per_block]
+description = "Result of the `issuance_per_block` call (selector `0x6c080f18`). (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per sampled block this declaration fires at"
+
+[table.issuance_per_block.columns]
 calldata = "The `calldata` bytes parameter. (seeded from the ABI - edit semantic.toml to improve this)"
 content_address = "The `content_address` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
 result = "The `result` bytes parameter. (seeded from the ABI - edit semantic.toml to improve this)"
 reverted = "The `reverted` bool parameter - stored as exact text `'true'`/`'false'`, not a SQL boolean. `reverted = true` and `AND`/`NOT` implicitly cast and work; `COALESCE`, `CASE`, `bool_and`/`bool_or` and `UNION` do not. Write `reverted = 'true'` or `CAST(reverted AS BOOLEAN)`. (seeded from the ABI - edit semantic.toml to improve this)"
 
-[table.grt_total_supply.footguns]
+[table.issuance_per_block.footguns]
 bools = ["reverted"]
 
 [table.rewards__horizon_rewards_assigned]
@@ -435,6 +471,13 @@ indexer = "The `indexer` address parameter. (seeded from the ABI - edit semantic
 [table.rewards__horizon_rewards_assigned.footguns]
 big_ints = ["amount"]
 overflows_dec = ["amount"]
+
+[table.rewards__parameter_updated]
+description = "`ParameterUpdated(string)` events emitted by the `rewards` contract. (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per ParameterUpdated(string) event"
+
+[table.rewards__parameter_updated.columns]
+param = "The `param` string parameter. (seeded from the ABI - edit semantic.toml to improve this)"
 
 [table.rewards__rewards_assigned]
 description = "`RewardsAssigned(address,address,uint256,uint256)` events emitted by the `rewards` contract. (seeded from the ABI - edit semantic.toml to improve this)"
@@ -1259,6 +1302,19 @@ valueAggregate = "The `valueAggregate` uint128 parameter. (seeded from the ABI -
 
 [table.tally__r_a_v_collected.footguns]
 big_ints = ["valueAggregate"]
+
+[table.total_supply]
+description = "Result of the `total_supply` call (selector `0x18160ddd`). (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per sampled block this declaration fires at"
+
+[table.total_supply.columns]
+calldata = "The `calldata` bytes parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+content_address = "The `content_address` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+result = "The `result` bytes parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+reverted = "The `reverted` bool parameter - stored as exact text `'true'`/`'false'`, not a SQL boolean. `reverted = true` and `AND`/`NOT` implicitly cast and work; `COALESCE`, `CASE`, `bool_and`/`bool_or` and `UNION` do not. Write `reverted = 'true'` or `CAST(reverted AS BOOLEAN)`. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.total_supply.footguns]
+bools = ["reverted"]
 
 [view.epoch_boundaries]
 description = "The (epoch, L2 block) window each epoch occupies. For epochs 1105 to 1370 the start is EXACT: EpochManager counts L1 blocks, so epoch(l1) = 92 + (l1 - 16687937) // 7200 from epochLength/lastLengthUpdateBlock/lastLengthUpdateEpoch read at the tip, binary-searched to the first L2 block whose header l1BlockNumber reaches that L1 boundary. Verified against the contract: currentEpoch() returns E at the boundary block and E-1 at the block before it. Those rows carry boundary_source 'l1-exact' and unobserved_gap_blocks 0, and every epoch in that range gets a row whether or not anything was observed in it. Outside the range there is no exact table and start_block falls back to the FIRST OBSERVED Horizon event, which is at or after the true start, so events in that gap are attributed to the predecessor; those rows carry 'observed' and unobserved_gap_blocks is the width of that uncertainty in L2 blocks. Computing the boundary in L2 block space instead is wrong by a factor of ~48 and is the trap this view exists to avoid. See nightswatchhq/nuthatch#1116."

@@ -17,6 +17,7 @@ Contracts indexed on arbitrum-one:
 - `service_registry` = 0x072884c745c0a23144753335776c99be22588f8a
 - `rewards` = 0x971b9d3d0ae3eca029cab5ea1fb0f72c85e6a525
 - `tally` = 0x8f69f5c07477ac46fbc491b1e6d91e2bb0111a9e
+- `graph_token` = 0x9623063377ad1b27544c965ccd7342f7ea7e88c7
 
 Data is local - never call an external API for it.
 

@@ -256,10 +256,17 @@ alias = "rewards"
 address = "0x971b9d3d0ae3eca029cab5ea1fb0f72c85e6a525"
 start_block = 42449638
 abi = "abis/rewards.json"
+#
+# `ParameterUpdated` is the fourth, and it is what makes the sampled `issuance_per_block` read below
+# safe to take coarsely: the sample says what issuance *is*, the event says exactly which block it
+# changed on. Its only parameter is the name of the parameter that moved, not its value, so it dates
+# a change and never states one - the two are only useful together. Appended to the vendored ABI
+# from the current implementation `0xa13cff50…`.
 events = [
     "RewardsAssigned",
     "HorizonRewardsAssigned",
     "RewardsDenied",
+    "ParameterUpdated",
 ]
 
 # The collector, and the reason `lodestar_escrow_transactions` cannot carry an allocation for every
@@ -287,12 +294,53 @@ events = [
     "RAVCollected",
 ]
 
+# The L2 GRT token, for `api/grt-flow`'s `totalGRTMinted` / `totalGRTBurned`.
+#
+# **`Transfer` is deliberately not indexed.** It is the whole GRT transfer stream on Arbitrum - tens
+# of millions of rows - and the two numbers the route wants are the bridge flow, not the stream. The
+# rewards-minting half of the subgraph's definition is `Transfer` from the zero address, which a nest
+# cannot express as a filter today (`topics[1]`/`topics[2]` filters are not in the config surface),
+# so indexing it would mean carrying the entire stream to fold two aggregates out of it. Out of
+# scope here; `BridgeMinted` / `BridgeBurned` are the bridge flow exactly and cost nothing.
+#
+# Address from `addresses.json` key `42161`, contract `L2GraphToken`; implementation
+# `0xaffcb961…`, ABI from Sourcify verbatim. Start block shared with `epochs`: the L2 protocol
+# contracts went up in one deployment run around 42,449,2xx.
+[[contracts]]
+alias = "graph_token"
+address = "0x9623063377ad1b27544c965ccd7342f7ea7e88c7"
+start_block = 42449227
+abi = "abis/graph-token.json"
+events = [
+    "BridgeMinted",
+    "BridgeBurned",
+]
+
 # RFC-0023 tier 3. `network-snapshot` wants GRT `totalSupply`, and deriving it would mean indexing
 # every L2GraphToken Transfer to sum mints minus burns - millions of rows for one number. A pinned
 # read samples it instead, at a fraction of the cost, and stays deterministic because the block is
 # pinned. Needs `--state-rpc`.
+#
+# Renamed from `grt_total_supply` and sampled ten times more often than the 100,000 it used to be:
+# `lodestar_network` now serves `/api/grt-flow`, which reads it as a live figure rather than a
+# footnote. One entry, not two - a second call to the same selector at a coarser cadence would be a
+# strict subset of these blocks and pay for the same answer twice.
 [[calls]]
-name = "grt_total_supply"
+name = "total_supply"
 contract = "0x9623063377AD1B27544C965cCd7342f7EA7e88C7"
 calldata = "0x18160ddd"
-every = 100000
+every = 1000
+
+# `networkGRTIssuancePerBlock`, the same way. Selector is keccak256("issuancePerBlock()")[:4].
+#
+# `start` is not the proxy's deployment block, because the getter is younger than the proxy: the
+# call reverts at 75,279,039 and answers 0 at 75,279,040, found by binary search on the public
+# archive endpoint. Sampling from the nest's start would buy 33,000 reverted rows and no fact. The
+# earlier implementations expressed issuance as `issuanceRate()`, a per-block *ratio*, which is a
+# different quantity and not what the route asks for.
+[[calls]]
+name = "issuance_per_block"
+contract = "0x971B9d3d0Ae3ECa029CAB5eA1fB0F72c85e6a525"
+calldata = "0x6c080f18"
+every = 1000
+start = 75279040

@@ -14,9 +14,11 @@ A self-hosted blockchain index. Query it locally; there is no third-party API.
 - `service_registry` = 0x072884c745c0a23144753335776c99be22588f8a
 - `rewards` = 0x971b9d3d0ae3eca029cab5ea1fb0f72c85e6a525
 - `tally` = 0x8f69f5c07477ac46fbc491b1e6d91e2bb0111a9e
+- `graph_token` = 0x9623063377ad1b27544c965ccd7342f7ea7e88c7
 
 ## Tables (one per contract event)
 - `curation__burned` - Burned(address,bytes32,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, curator, subgraphDeploymentID, tokens, signal)
+- `curation__collected` - Collected(bytes32,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, subgraphDeploymentID, tokens)
 - `curation__signalled` - Signalled(address,bytes32,uint256,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, curator, subgraphDeploymentID, tokens, signal, curationTax)
 - `disputes__dispute_accepted` - DisputeAccepted(bytes32,address,address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, disputeId, indexer, fisherman, tokens)
 - `disputes__dispute_cancelled` - DisputeCancelled(bytes32,address,address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, disputeId, indexer, fisherman, tokens)
@@ -38,7 +40,10 @@ A self-hosted blockchain index. Query it locally; there is no third-party API.
 - `gns__signal_minted` - SignalMinted(uint256,address,uint256,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, subgraphID, curator, nSignalCreated, vSignalCreated, tokensDeposited)
 - `gns__subgraph_deprecated` - SubgraphDeprecated(uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, subgraphID, withdrawableGRT)
 - `gns__subgraph_published` - SubgraphPublished(uint256,bytes32,uint32) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, subgraphID, subgraphDeploymentID, reserveRatio)
+- `graph_token__bridge_burned` - BridgeBurned(address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, account, amount)
+- `graph_token__bridge_minted` - BridgeMinted(address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, account, amount)
 - `rewards__horizon_rewards_assigned` - HorizonRewardsAssigned(address,address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationID, amount)
+- `rewards__parameter_updated` - ParameterUpdated(string) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, param)
 - `rewards__rewards_assigned` - RewardsAssigned(address,address,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationID, epoch, amount)
 - `rewards__rewards_denied_07b6` - RewardsDenied(address,address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationID, epoch)
 - `rewards__rewards_denied_9b13` - RewardsDenied(address,address) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationID)
@@ -87,7 +92,8 @@ A self-hosted blockchain index. Query it locally; there is no third-party API.
 - `subgraph_service__service_provider_registered` - ServiceProviderRegistered(address,bytes) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, serviceProvider, data)
 - `tally__payment_collected` - PaymentCollected(uint8,bytes32,address,address,address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, paymentType, collectionId, payer, receiver, dataService, tokens)
 - `tally__r_a_v_collected` - RAVCollected(bytes32,address,address,address,uint64,uint128,bytes,bytes) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, collectionId, payer, serviceProvider, dataService, timestampNs, valueAggregate, metadata, signature)
-- `grt_total_supply` -  (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, calldata, result, reverted, content_address)
+- `total_supply` -  (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, calldata, result, reverted, content_address)
+- `issuance_per_block` -  (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, calldata, result, reverted, content_address)
 
 ## Live HTTP API (run `nuthatch dev`)
 - `GET /`                    index status
