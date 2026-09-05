@@ -266,41 +266,149 @@ LEFT JOIN registry    g  ON g.sp  = s.sp
 LEFT JOIN provisioned pr ON pr.sp = s.sp;
 
 -- ---------------------------------------------------------------------------------------------
--- Per (delegator, indexer): the subgraph's `DelegatedStake`. Shares are exact; the token value of a
--- position is its share of the pool, `shares * pool_tokens / pool_shares`, which is how the
--- contracts value it too. Rows with zero shares are kept (a closed position is history the
--- portfolio page shows) and flagged.
+-- Per (delegator, indexer): the subgraph's `DelegatedStake`, including its accounting.
+--
+-- Shares are exact and were measured against `getDelegation` (top 60, all equal). The token value
+-- of a position is its share of the pool, `shares * pool_tokens / pool_shares`, as the contracts
+-- value it. The rest follows `staking.ts` / `horizonStaking.ts` in the network subgraph:
+--   * `personal_exchange_rate` is the delegator's weighted-average price per share, updated on every
+--     delegation as (rate * shares + tokens_in) / (shares + shares_in), unchanged by undelegation;
+--   * `realized_rewards` accrues on every undelegation as tokens_out - shares_out * rate, i.e. what
+--     the position was worth at exit minus what it cost, and `TokensUndelegated.tokens` *is* the
+--     exit value so no pool rate is needed.
+-- That is a sequential fold per position, done with `list_reduce` over the position's events in
+-- block order; the rate and realized rewards are DOUBLEs, which at 1e24 wei is a 1e-10 GRT error,
+-- the subgraph's own BigDecimals are truncated to 18 places, and no on-chain oracle exists for either
+-- (they are bookkeeping, not state). `locked_tokens` is undelegated and not yet withdrawn, both eras;
+-- `locked_until` is the newest Horizon thaw request's `thawingUntil`, a Unix time, and 0 for a legacy
+-- lock, whose 28-day thaw expired long ago and which is withdrawable now - the pages compare this
+-- field to the clock, so a block number here would be wrong in a way that looks right.
 -- ---------------------------------------------------------------------------------------------
 CREATE VIEW lodestar_delegator_stakes AS
 WITH events AS (
-  SELECT LOWER(delegator) AS delegator, LOWER(indexer) AS indexer,  CAST(tokens AS HUGEINT) AS tok,  CAST(shares AS HUGEINT) AS sh, block_timestamp AS ts, 'in'  AS dir FROM staking_legacy__stake_delegated
-  UNION ALL SELECT LOWER(delegator), LOWER(indexer),               -CAST(tokens AS HUGEINT),        -CAST(shares AS HUGEINT),      block_timestamp, 'out' FROM staking_legacy__stake_delegated_locked
-  UNION ALL SELECT LOWER(delegator), LOWER("serviceProvider"),      CAST(tokens AS HUGEINT),         CAST(shares AS HUGEINT),      block_timestamp, 'in'  FROM staking__tokens_delegated
-  UNION ALL SELECT LOWER(delegator), LOWER("serviceProvider"),     -CAST(tokens AS HUGEINT),        -CAST(shares AS HUGEINT),      block_timestamp, 'out' FROM staking__tokens_undelegated
+  SELECT LOWER(delegator) AS delegator, LOWER(indexer) AS indexer, 'in' AS kind, CAST(tokens AS HUGEINT) AS tok, CAST(shares AS HUGEINT) AS sh, CAST(block_timestamp AS BIGINT) AS ts, block_number * 100000 + log_index AS k FROM staking_legacy__stake_delegated
+  UNION ALL SELECT LOWER(delegator), LOWER(indexer),            'out', CAST(tokens AS HUGEINT), CAST(shares AS HUGEINT), CAST(block_timestamp AS BIGINT), block_number * 100000 + log_index FROM staking_legacy__stake_delegated_locked
+  UNION ALL SELECT LOWER(delegator), LOWER("serviceProvider"),  'in',  CAST(tokens AS HUGEINT), CAST(shares AS HUGEINT), CAST(block_timestamp AS BIGINT), block_number * 100000 + log_index FROM staking__tokens_delegated
+  UNION ALL SELECT LOWER(delegator), LOWER("serviceProvider"),  'out', CAST(tokens AS HUGEINT), CAST(shares AS HUGEINT), CAST(block_timestamp AS BIGINT), block_number * 100000 + log_index FROM staking__tokens_undelegated
 ),
-pairs AS (
+exact AS (
   SELECT delegator, indexer,
-         SUM(sh)                                   AS share_amount,
-         SUM(tok) FILTER (WHERE dir = 'in')        AS total_delegated_tokens,
-         -SUM(tok) FILTER (WHERE dir = 'out')      AS total_undelegated_tokens,
-         MIN(ts)                                   AS created_at,
-         MAX(ts) FILTER (WHERE dir = 'out')        AS last_undelegated_at
+         SUM(CASE WHEN kind = 'in' THEN sh ELSE -sh END)      AS share_amount,
+         SUM(CASE WHEN kind = 'in' THEN tok ELSE 0 END)       AS total_delegated_tokens,
+         SUM(CASE WHEN kind = 'out' THEN tok ELSE 0 END)      AS total_undelegated_tokens,
+         MIN(ts)                                              AS created_at,
+         MAX(CASE WHEN kind = 'out' THEN ts END)              AS last_undelegated_at
   FROM events GROUP BY 1, 2
+),
+folded AS (
+  SELECT delegator, indexer,
+         list_reduce(
+           list_prepend(
+             {'kind': 'init', 't': 0.0::DOUBLE, 'sh': 0.0::DOUBLE, 'shares': 0.0::DOUBLE, 'rate': 0.0::DOUBLE, 'realized': 0.0::DOUBLE},
+             list({'kind': kind, 't': CAST(tok AS DOUBLE), 'sh': CAST(sh AS DOUBLE), 'shares': 0.0::DOUBLE, 'rate': 0.0::DOUBLE, 'realized': 0.0::DOUBLE} ORDER BY k)
+           ),
+           lambda acc, e:
+             CASE WHEN e.kind = 'in' THEN
+               {'kind': 's', 't': 0.0::DOUBLE, 'sh': 0.0::DOUBLE,
+                'shares': acc.shares + e.sh,
+                'rate': CASE WHEN acc.shares + e.sh > 0 THEN (acc.rate * acc.shares + e.t) / (acc.shares + e.sh) ELSE acc.rate END,
+                'realized': acc.realized}
+             ELSE
+               {'kind': 's', 't': 0.0::DOUBLE, 'sh': 0.0::DOUBLE,
+                'shares': acc.shares - e.sh,
+                'rate': acc.rate,
+                'realized': acc.realized + (e.t - e.sh * acc.rate)}
+             END
+         ) AS st
+  FROM events GROUP BY 1, 2
+),
+withdrawn AS (
+  SELECT delegator, indexer, SUM(t) AS t FROM (
+    SELECT LOWER(delegator) AS delegator, LOWER(indexer) AS indexer, CAST(tokens AS HUGEINT) AS t FROM staking__stake_delegated_withdrawn
+    UNION ALL SELECT LOWER(delegator), LOWER("serviceProvider"), CAST(tokens AS HUGEINT) FROM staking__delegated_tokens_withdrawn
+  ) GROUP BY 1, 2
+),
+-- Horizon thaw requests by a delegator on an indexer: request types 1 and 2 are delegation thaws
+-- (`IHorizonStakingTypes.ThawRequestType`: Provision = 0, Delegation = 1, DelegationWithBeneficiary = 2).
+thaw AS (
+  SELECT LOWER(owner) AS delegator, LOWER("serviceProvider") AS indexer, MAX(CAST("thawingUntil" AS BIGINT)) AS thawing_until
+  FROM staking__thaw_request_created WHERE CAST("requestType" AS INTEGER) IN (1, 2) GROUP BY 1, 2
 )
-SELECT p.delegator || '-' || p.indexer                          AS id,
-       p.delegator,
-       p.indexer,
-       p.share_amount,
+SELECT x.delegator || '-' || x.indexer                        AS id,
+       x.delegator,
+       x.indexer,
+       x.share_amount,
        CASE WHEN i.delegator_shares > 0
-            THEN CAST(p.share_amount * i.delegated_tokens / i.delegator_shares AS HUGEINT)
-            ELSE 0 END                                          AS staked_tokens,
-       COALESCE(p.total_delegated_tokens, 0)                   AS total_delegated_tokens,
-       COALESCE(p.total_undelegated_tokens, 0)                 AS total_undelegated_tokens,
-       p.share_amount > 0                                       AS active,
-       p.created_at,
-       p.last_undelegated_at
-FROM pairs p
-LEFT JOIN lodestar_indexers i ON i.id = p.indexer;
+            THEN CAST(x.share_amount * i.delegated_tokens / i.delegator_shares AS HUGEINT)
+            ELSE 0 END                                         AS staked_tokens,
+       x.total_delegated_tokens,
+       x.total_undelegated_tokens,
+       f.st.rate                                               AS personal_exchange_rate,
+       CAST(f.st.realized AS HUGEINT)                          AS realized_rewards,
+       GREATEST(x.total_undelegated_tokens - COALESCE(w.t, 0), 0) AS locked_tokens,
+       CASE WHEN x.total_undelegated_tokens - COALESCE(w.t, 0) > 0 THEN COALESCE(t.thawing_until, 0) ELSE 0 END AS locked_until,
+       x.share_amount > 0                                      AS active,
+       x.created_at,
+       x.last_undelegated_at
+FROM exact x
+JOIN folded f ON f.delegator = x.delegator AND f.indexer = x.indexer
+LEFT JOIN withdrawn w ON w.delegator = x.delegator AND w.indexer = x.indexer
+LEFT JOIN thaw t ON t.delegator = x.delegator AND t.indexer = x.indexer
+LEFT JOIN lodestar_indexers i ON i.id = x.indexer;
+
+-- ---------------------------------------------------------------------------------------------
+-- Per delegator: the subgraph's `Delegator` totals, folded from the positions above so the two
+-- surfaces cannot disagree. `stakes_count` counts positions ever opened; `active_stakes_count`
+-- those with shares left, the subgraph's rule.
+-- ---------------------------------------------------------------------------------------------
+CREATE VIEW lodestar_delegators AS
+SELECT delegator                                  AS id,
+       SUM(total_delegated_tokens)                AS total_staked_tokens,
+       SUM(total_undelegated_tokens)              AS total_unstaked_tokens,
+       SUM(realized_rewards)                      AS total_realized_rewards,
+       COUNT(*)                                   AS stakes_count,
+       COUNT(*) FILTER (WHERE active)             AS active_stakes_count
+FROM lodestar_delegator_stakes GROUP BY 1;
+
+-- ---------------------------------------------------------------------------------------------
+-- Per (curator, deployment): the subgraph's `Signal`, for the curator portfolio. Curation-level
+-- positions only; name signal through GNS is the GNS contract's position here and the curator's
+-- `NameSignal` in the subgraph, which no Lodestar page reads. Tokens in are net of the curation
+-- tax as the subgraph's `signalledTokens` is; `realized_rewards` is the subgraph's unimplemented 0
+-- (no curation handler writes it). The deployment figures beside it follow `lodestar_allocations`'
+-- `signal` CTE and the active-allocation sum, so the three surfaces agree.
+-- ---------------------------------------------------------------------------------------------
+CREATE VIEW lodestar_curator_signals AS
+WITH pos AS (
+  SELECT curator, dep, SUM(sig) AS signal, SUM(tin) AS signalled_tokens, SUM(tout) AS unsignalled_tokens, MAX(ts) AS last_signal_change FROM (
+    SELECT LOWER(curator) AS curator, "subgraphDeploymentID" AS dep,  CAST(signal AS HUGEINT) AS sig, CAST(tokens AS HUGEINT) - CAST("curationTax" AS HUGEINT) AS tin, CAST(0 AS HUGEINT) AS tout, CAST(block_timestamp AS BIGINT) AS ts FROM curation__signalled
+    UNION ALL SELECT LOWER(curator), "subgraphDeploymentID", -CAST(signal AS HUGEINT), 0, CAST(tokens AS HUGEINT), CAST(block_timestamp AS BIGINT) FROM curation__burned
+  ) GROUP BY 1, 2
+),
+dep_signal AS (
+  SELECT dep, SUM(tok) AS signalled_tokens FROM (
+    SELECT "subgraphDeploymentID" AS dep,  CAST(tokens AS HUGEINT) - CAST("curationTax" AS HUGEINT) AS tok FROM curation__signalled
+    UNION ALL SELECT "subgraphDeploymentID", -CAST(tokens AS HUGEINT) FROM curation__burned
+    UNION ALL SELECT "subgraphDeploymentID",  CAST(tokens AS HUGEINT) FROM curation__collected
+  ) GROUP BY 1
+),
+dep_fees AS (SELECT "subgraphDeploymentID" AS dep, SUM(CAST(tokens AS HUGEINT)) AS query_fees_amount FROM curation__collected GROUP BY 1),
+dep_stake AS (SELECT subgraph_deployment AS dep, SUM(allocated_tokens) AS staked_tokens FROM lodestar_allocations WHERE status = 'Active' GROUP BY 1)
+SELECT p.curator || '-' || CAST(p.dep AS VARCHAR)   AS id,
+       p.curator,
+       p.dep                                        AS subgraph_deployment,
+       p.signalled_tokens,
+       p.unsignalled_tokens,
+       p.signal,
+       p.last_signal_change,
+       CAST(0 AS HUGEINT)                           AS realized_rewards,
+       COALESCE(ds.signalled_tokens, 0)             AS deployment_signalled_tokens,
+       COALESCE(df.query_fees_amount, 0)            AS deployment_query_fees_amount,
+       COALESCE(dst.staked_tokens, 0)               AS deployment_staked_tokens
+FROM pos p
+LEFT JOIN dep_signal ds ON ds.dep = p.dep
+LEFT JOIN dep_fees df ON df.dep = p.dep
+LEFT JOIN dep_stake dst ON dst.dep = p.dep;
 
 -- ---------------------------------------------------------------------------------------------
 -- Curators, per the network subgraph's own rule (network view, #649): a curator is an address that
