@@ -33,18 +33,32 @@ closed AS (
 ),
 -- The POI lives here, not on `AllocationClosed` - which is where the subgraph's shape implies it
 -- should be. Rewards are collected on close, so this is also the closest thing to a closing epoch.
+-- Both eras. Legacy allocations were paid by `RewardsAssigned` (no POI on the event, no delegator
+-- split); Horizon ones by `IndexingRewardsCollected`. The network's all-time rewards read 196M against
+-- the gateway's 837M with the legacy era missing; with it, 837,303,089 GRT exact.
 rewards AS (
-  SELECT "allocationId" AS id,
-         poi,
-         CAST("tokensRewards" AS HUGEINT) AS indexing_rewards,
-         CAST("tokensDelegationRewards" AS HUGEINT) AS indexing_delegator_rewards,
-         CAST("currentEpoch" AS HUGEINT)  AS rewards_epoch,
-         ROW_NUMBER() OVER (PARTITION BY "allocationId" ORDER BY block_number DESC, log_index DESC) AS rn
-  FROM subgraph_service__indexing_rewards_collected
+  SELECT id, poi, indexing_rewards, indexing_delegator_rewards, rewards_epoch,
+         ROW_NUMBER() OVER (PARTITION BY id ORDER BY block_number DESC, log_index DESC) AS rn
+  FROM (
+    SELECT "allocationId" AS id, poi, CAST("tokensRewards" AS HUGEINT) AS indexing_rewards,
+           CAST("tokensDelegationRewards" AS HUGEINT) AS indexing_delegator_rewards, CAST("currentEpoch" AS HUGEINT) AS rewards_epoch,
+           block_number, log_index
+    FROM subgraph_service__indexing_rewards_collected
+    UNION ALL
+    SELECT "allocationID", NULL, CAST(amount AS HUGEINT), 0, CAST(epoch AS HUGEINT), block_number, log_index
+    FROM rewards__rewards_assigned
+  )
 ),
+-- The subgraph's `queryFeesCollected` is the indexer's net: after the curators' share and the 1%
+-- protocol cut, the cut truncated per event. Gross read 12.2% high on every deployment's 30-day fees.
+-- Legacy: `RebateCollected.queryFees` (already net), and the pre-rebate `AllocationCollected` less its
+-- curation fees.
 fees AS (
-  SELECT "allocationId" AS id, SUM(CAST("tokensCollected" AS HUGEINT)) AS query_fees_collected
-  FROM subgraph_service__query_fees_collected GROUP BY 1
+  SELECT id, SUM(t) AS query_fees_collected FROM (
+    SELECT "allocationId" AS id, CAST("tokensCollected" AS HUGEINT) - CAST("tokensCurators" AS HUGEINT) - (CAST("tokensCollected" AS HUGEINT) // 100) AS t FROM subgraph_service__query_fees_collected
+    UNION ALL SELECT "allocationID", CAST("queryFees" AS HUGEINT) FROM staking_legacy__rebate_collected
+    UNION ALL SELECT "allocationID", CAST(tokens AS HUGEINT) - CAST("curationFees" AS HUGEINT) FROM staking_legacy__allocation_collected
+  ) GROUP BY 1
 ),
 -- The subgraph's `subgraphDeployment.signalledTokens`, exactly: what a curator paid in **net of
 -- the curation tax** (the tax is burned, it never reaches the pool), less what burns returned, plus

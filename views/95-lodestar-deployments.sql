@@ -18,11 +18,15 @@ WITH signal AS (
   ) GROUP BY 1
 ),
 -- The subgraph's `queryFeesAmount` is what the deployment's indexers were paid, after the curators' cut:
--- `QueryFeesCollected.tokensCollected - tokensCurators`. Summing curation `Collected` instead gave exactly
+-- `QueryFeesCollected.tokensCollected - tokensCurators - tokensCollected // 100` (the 1% protocol cut) for
+-- the Horizon era, `RebateCollected.queryFees` before it. Summing curation `Collected` instead gave exactly
 -- one ninth of the gateway's figure on every deployment measured (the curators' 10% against the 90%).
 fees AS (
-  SELECT LOWER("subgraphDeploymentId") AS dep, SUM(CAST("tokensCollected" AS HUGEINT) - CAST("tokensCurators" AS HUGEINT)) AS query_fees_amount
-  FROM subgraph_service__query_fees_collected GROUP BY 1
+  SELECT dep, SUM(t) AS query_fees_amount FROM (
+    SELECT LOWER("subgraphDeploymentId") AS dep, CAST("tokensCollected" AS HUGEINT) - CAST("tokensCurators" AS HUGEINT) - (CAST("tokensCollected" AS HUGEINT) // 100) AS t FROM subgraph_service__query_fees_collected
+    UNION ALL SELECT LOWER("subgraphDeploymentID"), CAST("queryFees" AS HUGEINT) FROM staking_legacy__rebate_collected
+    UNION ALL SELECT LOWER("subgraphDeploymentID"), CAST(tokens AS HUGEINT) - CAST("curationFees" AS HUGEINT) FROM staking_legacy__allocation_collected
+  ) GROUP BY 1
 ),
 allocs AS (
   SELECT LOWER(subgraph_deployment) AS dep,
