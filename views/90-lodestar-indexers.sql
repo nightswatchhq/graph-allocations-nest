@@ -14,26 +14,77 @@
 -- emit them; addresses are lower-cased; `id` follows the subgraph (the address, or `delegator-indexer`).
 
 -- ---------------------------------------------------------------------------------------------
+-- The per-indexer ledger: one row per event that moved an indexer's own stake or its delegation
+-- pool, with the block time, so a caller can state either figure *as of any moment* by summing rows
+-- up to it (`api/indexer-stake-history` wants 27 weekly points; the subgraph answered those with
+-- block-pinned queries). `lodestar_indexers` sums this same ledger, so the two cannot disagree.
+--
+-- `pool_delta` follows the model measured exact against `getDelegationPool` on every indexer: the
+-- delegation events themselves, the explicit pool additions, the legacy-era delegator reward share
+-- computed per `RewardsAssigned` from the cut in force (contract rounding, skipped when the pool was
+-- empty), and the silent share on legacy allocations closed after the upgrade. Thawing is not in the
+-- pool figure, as the subgraph's `delegatedTokens` is not.
+-- ---------------------------------------------------------------------------------------------
+CREATE VIEW lodestar_indexer_ledger AS
+WITH horizon_start AS (SELECT MIN(block_number) AS bn FROM staking__horizon_stake_deposited),
+pool_shares_series AS (
+  SELECT sp, k, SUM(sh) OVER (PARTITION BY sp ORDER BY k ROWS UNBOUNDED PRECEDING) AS cum_shares FROM (
+    SELECT LOWER(indexer) AS sp, block_number * 100000 + log_index AS k,  CAST(shares AS HUGEINT) AS sh FROM staking_legacy__stake_delegated
+    UNION ALL SELECT LOWER(indexer), block_number * 100000 + log_index, -CAST(shares AS HUGEINT) FROM staking_legacy__stake_delegated_locked
+    UNION ALL SELECT LOWER("serviceProvider"), block_number * 100000 + log_index,  CAST(shares AS HUGEINT) FROM staking__tokens_delegated
+    UNION ALL SELECT LOWER("serviceProvider"), block_number * 100000 + log_index, -CAST(shares AS HUGEINT) FROM staking__tokens_undelegated
+  )
+),
+cuts AS (SELECT LOWER(indexer) AS sp, CAST("indexingRewardCut" AS HUGEINT) AS cut, block_number * 100000 + log_index AS k FROM staking_legacy__delegation_parameters_updated),
+legacy_reward_share AS (
+  SELECT r.sp, r.ts, r.bn, r.k, r.amount - r.amount * c.cut // 1000000 AS t
+  FROM (SELECT LOWER(indexer) AS sp, CAST(amount AS HUGEINT) AS amount, CAST(block_timestamp AS BIGINT) AS ts, block_number AS bn, block_number * 100000 + log_index AS k FROM rewards__rewards_assigned) r
+  ASOF JOIN cuts c ON r.sp = c.sp AND r.k >= c.k
+  ASOF LEFT JOIN pool_shares_series ps ON r.sp = ps.sp AND r.k >= ps.k
+  WHERE r.bn < COALESCE((SELECT bn FROM horizon_start), 9223372036854775807) AND COALESCE(ps.cum_shares, 0) > 0
+),
+legacy_path_share AS (
+  SELECT h.sp, h.ts, h.bn, h.k, h.amount - h.amount * c.cut // 1000000 AS t
+  FROM (SELECT LOWER(indexer) AS sp, LOWER("allocationID") AS a, CAST(amount AS HUGEINT) AS amount, CAST(block_timestamp AS BIGINT) AS ts, block_number AS bn, block_number * 100000 + log_index AS k FROM rewards__horizon_rewards_assigned) h
+  ASOF JOIN cuts c ON h.sp = c.sp AND h.k >= c.k
+  ASOF LEFT JOIN pool_shares_series ps ON h.sp = ps.sp AND h.k >= ps.k
+  WHERE h.a IN (SELECT LOWER("allocationID") FROM staking_legacy__allocation_created) AND COALESCE(ps.cum_shares, 0) > 0
+)
+-- own stake
+SELECT LOWER(indexer) AS indexer, CAST(block_timestamp AS BIGINT) AS ts, block_number, block_number * 100000 + log_index AS k, 'stake_deposited' AS kind,  CAST(tokens AS HUGEINT) AS stake_delta, CAST(0 AS HUGEINT) AS pool_delta FROM staking_legacy__stake_deposited
+UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_withdrawn', -CAST(tokens AS HUGEINT), 0 FROM staking_legacy__stake_withdrawn
+UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_slashed',   -CAST(tokens AS HUGEINT), 0 FROM staking_legacy__stake_slashed
+UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_deposited',  CAST(tokens AS HUGEINT), 0 FROM staking__horizon_stake_deposited
+UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_withdrawn', -CAST(tokens AS HUGEINT), 0 FROM staking__horizon_stake_withdrawn
+UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_slashed',   -CAST(tokens AS HUGEINT), 0 FROM staking__provision_slashed
+-- delegation pool
+UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'delegated',   0,  CAST(tokens AS HUGEINT) FROM staking_legacy__stake_delegated
+UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'undelegated', 0, -CAST(tokens AS HUGEINT) FROM staking_legacy__stake_delegated_locked
+UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'delegated',   0,  CAST(tokens AS HUGEINT) FROM staking__tokens_delegated
+UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'undelegated', 0, -CAST(tokens AS HUGEINT) FROM staking__tokens_undelegated
+UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'pool_added',  0,  CAST(tokens AS HUGEINT) FROM staking__tokens_to_delegation_pool_added
+UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'pool_slashed', 0, -CAST(tokens AS HUGEINT) FROM staking__delegation_slashed
+UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'rebate_delegation_rewards', 0, CAST("delegationRewards" AS HUGEINT) FROM staking_legacy__rebate_collected
+UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'rebate_delegation_fees',    0, CAST("delegationFees" AS HUGEINT)    FROM staking_legacy__rebate_claimed
+UNION ALL SELECT sp, ts, bn, k, 'legacy_reward_share', 0, t FROM legacy_reward_share
+UNION ALL SELECT sp, ts, bn, k, 'legacy_path_share',   0, t FROM legacy_path_share;
+
+-- ---------------------------------------------------------------------------------------------
 -- Per-indexer stake, delegation pool, cuts, rewards, fees, registry and provisions.
 -- ---------------------------------------------------------------------------------------------
 CREATE VIEW lodestar_indexers AS
 WITH
--- Own stake. Horizon renamed the events at block ~408,847,369; both eras are one history. Slashing
--- is legacy only - `ProvisionSlashed` has never fired (network view, measured) - and `tokens` is the
--- whole amount removed; `reward` is the informer's cut of that same sum, so it is not subtracted.
-stake_events AS (
-  SELECT LOWER(indexer) AS sp,            CAST(tokens AS HUGEINT) AS t, block_timestamp AS ts, block_number AS bn FROM staking_legacy__stake_deposited
-  UNION ALL SELECT LOWER(indexer),          -CAST(tokens AS HUGEINT), block_timestamp, block_number FROM staking_legacy__stake_withdrawn
-  UNION ALL SELECT LOWER(indexer),          -CAST(tokens AS HUGEINT), block_timestamp, block_number FROM staking_legacy__stake_slashed
-  UNION ALL SELECT LOWER("serviceProvider"), CAST(tokens AS HUGEINT), block_timestamp, block_number FROM staking__horizon_stake_deposited
-  UNION ALL SELECT LOWER("serviceProvider"),-CAST(tokens AS HUGEINT), block_timestamp, block_number FROM staking__horizon_stake_withdrawn
-  UNION ALL SELECT LOWER("serviceProvider"),-CAST(tokens AS HUGEINT), block_timestamp, block_number FROM staking__provision_slashed
-),
+-- Own stake and the delegation pool are sums over `lodestar_indexer_ledger`, so this view and any
+-- as-of query over the ledger state the same figures. The ledger's header says what is in each.
 stake AS (
-  SELECT sp, SUM(t) AS staked_tokens,
-         MIN(ts) FILTER (WHERE t > 0) AS created_at,
-         MIN(bn) FILTER (WHERE t > 0) AS created_at_block
-  FROM stake_events GROUP BY 1
+  SELECT indexer AS sp, SUM(stake_delta) AS staked_tokens,
+         MIN(ts) FILTER (WHERE stake_delta > 0) AS created_at,
+         MIN(block_number) FILTER (WHERE stake_delta > 0) AS created_at_block
+  FROM lodestar_indexer_ledger GROUP BY 1
+),
+pool_adjust AS (
+  SELECT indexer AS sp, SUM(pool_delta) AS pool_rewards_added FROM lodestar_indexer_ledger
+  WHERE kind NOT IN ('delegated', 'undelegated') GROUP BY 1
 ),
 -- Locked (thawing) own stake. Both `StakeLocked` and `HorizonStakeLocked` carry the *total* locked
 -- amount and its release time, not a delta, so the newest event is the state - unless a withdrawal
@@ -64,75 +115,6 @@ delegation AS (
     UNION ALL SELECT LOWER(delegator), LOWER("serviceProvider"),            CAST(tokens AS HUGEINT),         CAST(shares AS HUGEINT)      FROM staking__tokens_delegated
     UNION ALL SELECT LOWER(delegator), LOWER("serviceProvider"),           -CAST(tokens AS HUGEINT),        -CAST(shares AS HUGEINT)      FROM staking__tokens_undelegated
   ) GROUP BY 1, 2
-),
--- Rewards that land in the pool without a delegation event. The subgraph's `delegatedTokens` grows
--- when the delegators' share of rewards is added to the pool, and tokens leave the pool *with* those
--- rewards, so a pool netted from delegation events alone goes negative on any old indexer (measured:
--- -68k GRT against 1.18M shares on the first real-data run). Horizon states the addition:
--- `TokensToDelegationPoolAdded`. Legacy states the query-fee half (`RebateCollected.delegationRewards`,
--- `RebateClaimed.delegationFees`) but the indexing-reward half was split inside the staking contract
--- and never emitted, so it is *computed*: each pre-Horizon `RewardsAssigned.amount` times one minus
--- the `indexingRewardCut` in force at that block, per `Staking._collectDelegationIndexingRewards`.
--- The cut in force is the newest `DelegationParametersUpdated` at or before the event (an ASOF join
--- on block-then-log order); a first stake sets the cuts to 100% and emits that event, so every
--- indexer has one before its first reward. The contract also skips the addition when the pool holds
--- no tokens, which the cut alone does not know; at a 100% cut the share is zero anyway, and the
--- parity run arbitrates the rest. Bounded by the first `HorizonStakeDeposited` block because after
--- the upgrade the same split is emitted as `TokensToDelegationPoolAdded` and would double count.
--- `DelegationSlashed` removes from the pool and has never fired; it is folded anyway.
-horizon_start AS (SELECT MIN(block_number) AS bn FROM staking__horizon_stake_deposited),
--- The contract's exact arithmetic, both eras of the legacy path (`_collectDelegationIndexingRewards`):
--- the indexer's cut is taken first, floored, and the delegators get the remainder - so
--- `amount - amount * cut // 1e6`, not `amount * (1e6 - cut) // 1e6`, which is a few wei lower and
--- was, measured across all 184 indexers. And the addition is skipped when the pool holds nothing;
--- pool shares as of the event stand in for pool tokens, since one is zero exactly when the other is
--- (slashing aside, which has never emptied a pool). Without that skip the view read 1,901 GRT high on
--- one indexer whose delegators had all left before its allocations closed.
-pool_shares_series AS (
-  SELECT sp, k, SUM(sh) OVER (PARTITION BY sp ORDER BY k ROWS UNBOUNDED PRECEDING) AS cum_shares FROM (
-    SELECT LOWER(indexer) AS sp, block_number * 100000 + log_index AS k,  CAST(shares AS HUGEINT) AS sh FROM staking_legacy__stake_delegated
-    UNION ALL SELECT LOWER(indexer), block_number * 100000 + log_index, -CAST(shares AS HUGEINT) FROM staking_legacy__stake_delegated_locked
-    UNION ALL SELECT LOWER("serviceProvider"), block_number * 100000 + log_index,  CAST(shares AS HUGEINT) FROM staking__tokens_delegated
-    UNION ALL SELECT LOWER("serviceProvider"), block_number * 100000 + log_index, -CAST(shares AS HUGEINT) FROM staking__tokens_undelegated
-  )
-),
-legacy_reward_share AS (
-  SELECT r.sp, SUM(r.amount - r.amount * c.cut // 1000000) AS t
-  FROM (SELECT LOWER(indexer) AS sp, CAST(amount AS HUGEINT) AS amount,
-               block_number * 100000 + log_index AS k, block_number AS bn
-        FROM rewards__rewards_assigned) r
-  ASOF JOIN (SELECT LOWER(indexer) AS sp, CAST("indexingRewardCut" AS HUGEINT) AS cut,
-                    block_number * 100000 + log_index AS k
-             FROM staking_legacy__delegation_parameters_updated) c
-    ON r.sp = c.sp AND r.k >= c.k
-  ASOF LEFT JOIN pool_shares_series ps ON r.sp = ps.sp AND r.k >= ps.k
-  WHERE r.bn < COALESCE((SELECT bn FROM horizon_start), 9223372036854775807)
-    AND COALESCE(ps.cum_shares, 0) > 0
-  GROUP BY 1
-),
-legacy_path_share AS (
-  SELECT h.sp, SUM(h.amount - h.amount * c.cut // 1000000) AS t
-  FROM (SELECT LOWER(indexer) AS sp, LOWER("allocationID") AS a, CAST(amount AS HUGEINT) AS amount,
-               block_number * 100000 + log_index AS k
-        FROM rewards__horizon_rewards_assigned) h
-  ASOF JOIN (SELECT LOWER(indexer) AS sp, CAST("indexingRewardCut" AS HUGEINT) AS cut,
-                    block_number * 100000 + log_index AS k
-             FROM staking_legacy__delegation_parameters_updated) c
-    ON h.sp = c.sp AND h.k >= c.k
-  ASOF LEFT JOIN pool_shares_series ps ON h.sp = ps.sp AND h.k >= ps.k
-  WHERE h.a IN (SELECT LOWER("allocationID") FROM staking_legacy__allocation_created)
-    AND COALESCE(ps.cum_shares, 0) > 0
-  GROUP BY 1
-),
-pool_adjust AS (
-  SELECT sp, SUM(t) AS pool_rewards_added FROM (
-    SELECT LOWER("serviceProvider") AS sp,  CAST(tokens AS HUGEINT) AS t FROM staking__tokens_to_delegation_pool_added
-    UNION ALL SELECT sp, t FROM legacy_path_share
-    UNION ALL SELECT LOWER("serviceProvider"), -CAST(tokens AS HUGEINT) FROM staking__delegation_slashed
-    UNION ALL SELECT LOWER(indexer),  CAST("delegationRewards" AS HUGEINT) FROM staking_legacy__rebate_collected
-    UNION ALL SELECT LOWER(indexer),  CAST("delegationFees" AS HUGEINT)    FROM staking_legacy__rebate_claimed
-    UNION ALL SELECT sp, t FROM legacy_reward_share
-  ) GROUP BY 1
 ),
 pool AS (
   SELECT sp,
