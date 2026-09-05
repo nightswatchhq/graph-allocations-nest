@@ -51,23 +51,23 @@ legacy_path_share AS (
   WHERE h.a IN (SELECT LOWER("allocationID") FROM staking_legacy__allocation_created) AND COALESCE(ps.cum_shares, 0) > 0
 )
 -- own stake
-SELECT LOWER(indexer) AS indexer, CAST(block_timestamp AS BIGINT) AS ts, block_number, block_number * 100000 + log_index AS k, 'stake_deposited' AS kind,  CAST(tokens AS HUGEINT) AS stake_delta, CAST(0 AS HUGEINT) AS pool_delta FROM staking_legacy__stake_deposited
-UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_withdrawn', -CAST(tokens AS HUGEINT), 0 FROM staking_legacy__stake_withdrawn
-UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_slashed',   -CAST(tokens AS HUGEINT), 0 FROM staking_legacy__stake_slashed
-UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_deposited',  CAST(tokens AS HUGEINT), 0 FROM staking__horizon_stake_deposited
-UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_withdrawn', -CAST(tokens AS HUGEINT), 0 FROM staking__horizon_stake_withdrawn
-UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_slashed',   -CAST(tokens AS HUGEINT), 0 FROM staking__provision_slashed
+SELECT LOWER(indexer) AS indexer, CAST(block_timestamp AS BIGINT) AS ts, block_number, block_number * 100000 + log_index AS k, 'stake_deposited' AS kind,  CAST(tokens AS HUGEINT) AS stake_delta, CAST(0 AS HUGEINT) AS pool_delta, CAST(0 AS HUGEINT) AS shares_delta FROM staking_legacy__stake_deposited
+UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_withdrawn', -CAST(tokens AS HUGEINT), 0, 0 FROM staking_legacy__stake_withdrawn
+UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_slashed',   -CAST(tokens AS HUGEINT), 0, 0 FROM staking_legacy__stake_slashed
+UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_deposited',  CAST(tokens AS HUGEINT), 0, 0 FROM staking__horizon_stake_deposited
+UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_withdrawn', -CAST(tokens AS HUGEINT), 0, 0 FROM staking__horizon_stake_withdrawn
+UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_slashed',   -CAST(tokens AS HUGEINT), 0, 0 FROM staking__provision_slashed
 -- delegation pool
-UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'delegated',   0,  CAST(tokens AS HUGEINT) FROM staking_legacy__stake_delegated
-UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'undelegated', 0, -CAST(tokens AS HUGEINT) FROM staking_legacy__stake_delegated_locked
-UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'delegated',   0,  CAST(tokens AS HUGEINT) FROM staking__tokens_delegated
-UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'undelegated', 0, -CAST(tokens AS HUGEINT) FROM staking__tokens_undelegated
-UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'pool_added',  0,  CAST(tokens AS HUGEINT) FROM staking__tokens_to_delegation_pool_added
-UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'pool_slashed', 0, -CAST(tokens AS HUGEINT) FROM staking__delegation_slashed
-UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'rebate_delegation_rewards', 0, CAST("delegationRewards" AS HUGEINT) FROM staking_legacy__rebate_collected
-UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'rebate_delegation_fees',    0, CAST("delegationFees" AS HUGEINT)    FROM staking_legacy__rebate_claimed
-UNION ALL SELECT sp, ts, bn, k, 'legacy_reward_share', 0, t FROM legacy_reward_share
-UNION ALL SELECT sp, ts, bn, k, 'legacy_path_share',   0, t FROM legacy_path_share;
+UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'delegated',   0,  CAST(tokens AS HUGEINT),  CAST(shares AS HUGEINT) FROM staking_legacy__stake_delegated
+UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'undelegated', 0, -CAST(tokens AS HUGEINT), -CAST(shares AS HUGEINT) FROM staking_legacy__stake_delegated_locked
+UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'delegated',   0,  CAST(tokens AS HUGEINT),  CAST(shares AS HUGEINT) FROM staking__tokens_delegated
+UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'undelegated', 0, -CAST(tokens AS HUGEINT), -CAST(shares AS HUGEINT) FROM staking__tokens_undelegated
+UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'pool_added',  0,  CAST(tokens AS HUGEINT), 0 FROM staking__tokens_to_delegation_pool_added
+UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'pool_slashed', 0, -CAST(tokens AS HUGEINT), 0 FROM staking__delegation_slashed
+UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'rebate_delegation_rewards', 0, CAST("delegationRewards" AS HUGEINT), 0 FROM staking_legacy__rebate_collected
+UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'rebate_delegation_fees',    0, CAST("delegationFees" AS HUGEINT)   , 0 FROM staking_legacy__rebate_claimed
+UNION ALL SELECT sp, ts, bn, k, 'legacy_reward_share', 0, t, 0 FROM legacy_reward_share
+UNION ALL SELECT sp, ts, bn, k, 'legacy_path_share', 0, t, 0 FROM legacy_path_share;
 
 -- ---------------------------------------------------------------------------------------------
 -- Per-indexer stake, delegation pool, cuts, rewards, fees, registry and provisions.
