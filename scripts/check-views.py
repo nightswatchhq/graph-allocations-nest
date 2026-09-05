@@ -68,7 +68,7 @@ data="\n".join([
 q = ("SELECT CAST(share_amount AS VARCHAR), round(personal_exchange_rate, 6), CAST(realized_rewards // 1000000000000000000 AS VARCHAR), "
      "CAST(total_delegated_tokens // 1000000000000000000 AS VARCHAR), CAST(total_undelegated_tokens // 1000000000000000000 AS VARCHAR), "
      "CAST(locked_tokens // 1000000000000000000 AS VARCHAR), locked_until, active FROM lodestar_delegator_stakes;")
-r = subprocess.run(['duckdb', ':memory:', '-csv', '-noheader'], input=sql.replace("SELECT * FROM", "-- ") + "\n" + data + "\n" + q, capture_output=True, text=True)
+r = subprocess.run(['duckdb', ':memory:', '-csv', '-noheader'], input=sql + "\n" + data + "\n" + q, capture_output=True, text=True)
 got = r.stdout.strip().split("\n")[-1] if r.stdout.strip() else ''
 want = "0,1.066667,20,130,150,90,1234567890,false"
 if r.returncode != 0 or got != want:
