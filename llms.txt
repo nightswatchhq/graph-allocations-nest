@@ -94,6 +94,10 @@ A self-hosted blockchain index. Query it locally; there is no third-party API.
 - `tally__r_a_v_collected` - RAVCollected(bytes32,address,address,address,uint64,uint128,bytes,bytes) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, collectionId, payer, serviceProvider, dataService, timestampNs, valueAggregate, metadata, signature)
 - `total_supply` -  (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, calldata, result, reverted, content_address)
 - `issuance_per_block` -  (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, calldata, result, reverted, content_address)
+- `delegation_ratio` -  (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, calldata, result, reverted, content_address)
+- `curation_tax_percentage` -  (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, calldata, result, reverted, content_address)
+- `protocol_payment_cut` -  (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, calldata, result, reverted, content_address)
+- `max_thawing_period` -  (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, calldata, result, reverted, content_address)
 
 ## Live HTTP API (run `nuthatch dev`)
 - `GET /`                    index status

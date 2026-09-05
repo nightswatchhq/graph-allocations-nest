@@ -81,9 +81,23 @@ delegation AS (
 -- the upgrade the same split is emitted as `TokensToDelegationPoolAdded` and would double count.
 -- `DelegationSlashed` removes from the pool and has never fired; it is folded anyway.
 horizon_start AS (SELECT MIN(block_number) AS bn FROM staking__horizon_stake_deposited),
+-- The contract's exact arithmetic, both eras of the legacy path (`_collectDelegationIndexingRewards`):
+-- the indexer's cut is taken first, floored, and the delegators get the remainder - so
+-- `amount - amount * cut // 1e6`, not `amount * (1e6 - cut) // 1e6`, which is a few wei lower and
+-- was, measured across all 184 indexers. And the addition is skipped when the pool holds nothing;
+-- pool shares as of the event stand in for pool tokens, since one is zero exactly when the other is
+-- (slashing aside, which has never emptied a pool). Without that skip the view read 1,901 GRT high on
+-- one indexer whose delegators had all left before its allocations closed.
+pool_shares_series AS (
+  SELECT sp, k, SUM(sh) OVER (PARTITION BY sp ORDER BY k ROWS UNBOUNDED PRECEDING) AS cum_shares FROM (
+    SELECT LOWER(indexer) AS sp, block_number * 100000 + log_index AS k,  CAST(shares AS HUGEINT) AS sh FROM staking_legacy__stake_delegated
+    UNION ALL SELECT LOWER(indexer), block_number * 100000 + log_index, -CAST(shares AS HUGEINT) FROM staking_legacy__stake_delegated_locked
+    UNION ALL SELECT LOWER("serviceProvider"), block_number * 100000 + log_index,  CAST(shares AS HUGEINT) FROM staking__tokens_delegated
+    UNION ALL SELECT LOWER("serviceProvider"), block_number * 100000 + log_index, -CAST(shares AS HUGEINT) FROM staking__tokens_undelegated
+  )
+),
 legacy_reward_share AS (
-  -- `//`, not `/`: DuckDB's `/` is floating-point division and would turn wei into a DOUBLE.
-  SELECT r.sp, SUM(r.amount * (1000000 - c.cut) // 1000000) AS t
+  SELECT r.sp, SUM(r.amount - r.amount * c.cut // 1000000) AS t
   FROM (SELECT LOWER(indexer) AS sp, CAST(amount AS HUGEINT) AS amount,
                block_number * 100000 + log_index AS k, block_number AS bn
         FROM rewards__rewards_assigned) r
@@ -91,19 +105,13 @@ legacy_reward_share AS (
                     block_number * 100000 + log_index AS k
              FROM staking_legacy__delegation_parameters_updated) c
     ON r.sp = c.sp AND r.k >= c.k
+  ASOF LEFT JOIN pool_shares_series ps ON r.sp = ps.sp AND r.k >= ps.k
   WHERE r.bn < COALESCE((SELECT bn FROM horizon_start), 9223372036854775807)
+    AND COALESCE(ps.cum_shares, 0) > 0
   GROUP BY 1
 ),
--- The second silent addition, and the last: a *legacy* allocation closed after the upgrade goes
--- through the compatibility path, which adds the delegators' share of its rewards to the pool with
--- no `TokensToDelegationPoolAdded`, using the legacy `indexingRewardCut`. The reward itself is
--- emitted as `HorizonRewardsAssigned` on a legacy allocation id. Measured on two indexers against
--- `getDelegationPool` at the current block: 20,791 GRT of a 20,791 gap on one; 9,331 of 18,101 on the
--- other, whose remaining 8,770 is its `tokensThawing` (8,769), which the contract keeps in
--- `pool.tokens` and the subgraph does not. With this, `delegated_tokens + delegated_thawing_tokens`
--- equals the contract's `pool.tokens` and `delegated_tokens` equals the subgraph's `delegatedTokens`.
 legacy_path_share AS (
-  SELECT h.sp, SUM(h.amount * (1000000 - c.cut) // 1000000) AS t
+  SELECT h.sp, SUM(h.amount - h.amount * c.cut // 1000000) AS t
   FROM (SELECT LOWER(indexer) AS sp, LOWER("allocationID") AS a, CAST(amount AS HUGEINT) AS amount,
                block_number * 100000 + log_index AS k
         FROM rewards__horizon_rewards_assigned) h
@@ -111,7 +119,9 @@ legacy_path_share AS (
                     block_number * 100000 + log_index AS k
              FROM staking_legacy__delegation_parameters_updated) c
     ON h.sp = c.sp AND h.k >= c.k
+  ASOF LEFT JOIN pool_shares_series ps ON h.sp = ps.sp AND h.k >= ps.k
   WHERE h.a IN (SELECT LOWER("allocationID") FROM staking_legacy__allocation_created)
+    AND COALESCE(ps.cum_shares, 0) > 0
   GROUP BY 1
 ),
 pool_adjust AS (

@@ -62,6 +62,32 @@ overflows_dec = [
     "curationTax",
 ]
 
+[table.curation_tax_percentage]
+description = "Result of the `curation_tax_percentage` call (selector `0xf115c427`). (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per sampled block this declaration fires at"
+
+[table.curation_tax_percentage.columns]
+calldata = "The `calldata` bytes parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+content_address = "The `content_address` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+result = "The `result` bytes parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+reverted = "The `reverted` bool parameter - stored as exact text `'true'`/`'false'`, not a SQL boolean. `reverted = true` and `AND`/`NOT` implicitly cast and work; `COALESCE`, `CASE`, `bool_and`/`bool_or` and `UNION` do not. Write `reverted = 'true'` or `CAST(reverted AS BOOLEAN)`. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.curation_tax_percentage.footguns]
+bools = ["reverted"]
+
+[table.delegation_ratio]
+description = "Result of the `delegation_ratio` call (selector `0x1ebb7c30`). (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per sampled block this declaration fires at"
+
+[table.delegation_ratio.columns]
+calldata = "The `calldata` bytes parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+content_address = "The `content_address` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+result = "The `result` bytes parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+reverted = "The `reverted` bool parameter - stored as exact text `'true'`/`'false'`, not a SQL boolean. `reverted = true` and `AND`/`NOT` implicitly cast and work; `COALESCE`, `CASE`, `bool_and`/`bool_or` and `UNION` do not. Write `reverted = 'true'` or `CAST(reverted AS BOOLEAN)`. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.delegation_ratio.footguns]
+bools = ["reverted"]
+
 [table.disputes__dispute_accepted]
 description = "`DisputeAccepted(bytes32,address,address,uint256)` events emitted by the `disputes` contract. (seeded from the ABI - edit semantic.toml to improve this)"
 grain = "one row per DisputeAccepted(bytes32,address,address,uint256) event"
@@ -457,6 +483,32 @@ result = "The `result` bytes parameter. (seeded from the ABI - edit semantic.tom
 reverted = "The `reverted` bool parameter - stored as exact text `'true'`/`'false'`, not a SQL boolean. `reverted = true` and `AND`/`NOT` implicitly cast and work; `COALESCE`, `CASE`, `bool_and`/`bool_or` and `UNION` do not. Write `reverted = 'true'` or `CAST(reverted AS BOOLEAN)`. (seeded from the ABI - edit semantic.toml to improve this)"
 
 [table.issuance_per_block.footguns]
+bools = ["reverted"]
+
+[table.max_thawing_period]
+description = "Result of the `max_thawing_period` call (selector `0x39514ad2`). (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per sampled block this declaration fires at"
+
+[table.max_thawing_period.columns]
+calldata = "The `calldata` bytes parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+content_address = "The `content_address` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+result = "The `result` bytes parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+reverted = "The `reverted` bool parameter - stored as exact text `'true'`/`'false'`, not a SQL boolean. `reverted = true` and `AND`/`NOT` implicitly cast and work; `COALESCE`, `CASE`, `bool_and`/`bool_or` and `UNION` do not. Write `reverted = 'true'` or `CAST(reverted AS BOOLEAN)`. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.max_thawing_period.footguns]
+bools = ["reverted"]
+
+[table.protocol_payment_cut]
+description = "Result of the `protocol_payment_cut` call (selector `0x1d526e50`). (seeded from the ABI - edit semantic.toml to improve this)"
+grain = "one row per sampled block this declaration fires at"
+
+[table.protocol_payment_cut.columns]
+calldata = "The `calldata` bytes parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+content_address = "The `content_address` bytes32 parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+result = "The `result` bytes parameter. (seeded from the ABI - edit semantic.toml to improve this)"
+reverted = "The `reverted` bool parameter - stored as exact text `'true'`/`'false'`, not a SQL boolean. `reverted = true` and `AND`/`NOT` implicitly cast and work; `COALESCE`, `CASE`, `bool_and`/`bool_or` and `UNION` do not. Write `reverted = 'true'` or `CAST(reverted AS BOOLEAN)`. (seeded from the ABI - edit semantic.toml to improve this)"
+
+[table.protocol_payment_cut.footguns]
 bools = ["reverted"]
 
 [table.rewards__horizon_rewards_assigned]
