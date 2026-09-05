@@ -388,11 +388,30 @@ signal AS (
   FROM curation__signalled s
   JOIN epoch_boundaries b ON s.block_number >= b.start_block AND s.block_number <= b.end_block
   GROUP BY 1
+),
+-- The subgraph's `Epoch.stakeDeposited`: own stake deposited during the epoch, both eras' events
+-- (nuthatch#1160, for `api/epochs`). And the protocol's cut of the epoch's query fees, the
+-- `tokensCollected // 100` the `fees` CTE already subtracts, exposed for `api/token-metrics`'
+-- `taxedQueryFees`.
+deposits AS (
+  SELECT b.epoch, SUM(t) AS stake_deposited FROM (
+    SELECT block_number, CAST(tokens AS HUGEINT) AS t FROM staking_legacy__stake_deposited
+    UNION ALL SELECT block_number, CAST(tokens AS HUGEINT) FROM staking__horizon_stake_deposited
+  ) d JOIN epoch_boundaries b ON d.block_number >= b.start_block AND d.block_number <= b.end_block
+  GROUP BY 1
+),
+protocol_tax AS (
+  SELECT b.epoch, SUM(CAST(q."tokensCollected" AS HUGEINT) // 100) AS taxed_query_fees
+  FROM subgraph_service__query_fees_collected q
+  JOIN epoch_boundaries b ON q.block_number >= b.start_block AND q.block_number <= b.end_block
+  GROUP BY 1
 )
 SELECT b.epoch                                  AS id,
        b.start_block,
        b.end_block,
        COALESCE(s.signalled_tokens, 0)          AS signalled_tokens,
+       COALESCE(d.stake_deposited, 0)           AS stake_deposited,
+       COALESCE(p.taxed_query_fees, 0)          AS taxed_query_fees,
        COALESCE(r.total_rewards, 0)             AS total_rewards,
        COALESCE(r.total_indexer_rewards, 0)     AS total_indexer_rewards,
        COALESCE(r.total_delegator_rewards, 0)   AS total_delegator_rewards,
@@ -402,4 +421,6 @@ FROM epoch_boundaries b
 LEFT JOIN rewards r ON r.epoch = b.epoch
 LEFT JOIN fees    f ON f.epoch = b.epoch
 LEFT JOIN signal  s ON s.epoch = b.epoch
+LEFT JOIN deposits d ON d.epoch = b.epoch
+LEFT JOIN protocol_tax p ON p.epoch = b.epoch
 ORDER BY b.epoch;
