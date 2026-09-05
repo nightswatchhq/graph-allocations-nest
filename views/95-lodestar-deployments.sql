@@ -4,8 +4,8 @@
 -- metadata hashes; this view is the on-chain half and is joined to them in Lodestar.
 --
 -- `signalled_tokens` follows `lodestar_allocations`' signal CTE (net of the curation tax, plus query
--- fees collected into the pool, less burns). `query_fees_amount` is what curation `Collected` into
--- the deployment's pool - the subgraph's `queryFeesAmount`. `staked_tokens` is active allocation.
+-- fees collected into the pool, less burns). `query_fees_amount` is the indexers' net query fees on the
+-- deployment, per the `fees` CTE below. `staked_tokens` is active allocation.
 -- `created_at` is the first block anything touched the deployment: its first allocation or its first
 -- signal, whichever came first; the subgraph dates it from its first appearance the same way.
 -- `active_allocation_count` and `curator_count` are the lengths the gateway path counted.
@@ -17,8 +17,12 @@ WITH signal AS (
     UNION ALL SELECT LOWER("subgraphDeploymentID"),  CAST(tokens AS HUGEINT), CAST(block_timestamp AS BIGINT) FROM curation__collected
   ) GROUP BY 1
 ),
+-- The subgraph's `queryFeesAmount` is what the deployment's indexers were paid, after the curators' cut:
+-- `QueryFeesCollected.tokensCollected - tokensCurators`. Summing curation `Collected` instead gave exactly
+-- one ninth of the gateway's figure on every deployment measured (the curators' 10% against the 90%).
 fees AS (
-  SELECT LOWER("subgraphDeploymentID") AS dep, SUM(CAST(tokens AS HUGEINT)) AS query_fees_amount FROM curation__collected GROUP BY 1
+  SELECT LOWER("subgraphDeploymentId") AS dep, SUM(CAST("tokensCollected" AS HUGEINT) - CAST("tokensCurators" AS HUGEINT)) AS query_fees_amount
+  FROM subgraph_service__query_fees_collected GROUP BY 1
 ),
 allocs AS (
   SELECT LOWER(subgraph_deployment) AS dep,
