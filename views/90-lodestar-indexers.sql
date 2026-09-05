@@ -194,7 +194,8 @@ fees AS (
   SELECT sp, SUM(t) AS query_fees_collected FROM (
     SELECT LOWER(indexer) AS sp, CAST(tokens AS HUGEINT) - CAST("curationFees" AS HUGEINT) AS t FROM staking_legacy__allocation_collected
     UNION ALL SELECT LOWER(indexer), CAST("queryFees" AS HUGEINT) FROM staking_legacy__rebate_collected
-    UNION ALL SELECT LOWER("serviceProvider"), CAST("tokensCollected" AS HUGEINT) FROM subgraph_service__query_fees_collected
+    -- net of the curators' share and the 1% protocol cut, the subgraph's figure (gross read 3.5% high)
+    UNION ALL SELECT LOWER("serviceProvider"), CAST("tokensCollected" AS HUGEINT) - CAST("tokensCurators" AS HUGEINT) - (CAST("tokensCollected" AS HUGEINT) // 100) FROM subgraph_service__query_fees_collected
   ) GROUP BY 1
 ),
 -- Service registry: the newest of register / unregister per indexer is the state.
@@ -235,8 +236,10 @@ SELECT s.sp                                                     AS id,
        COALESCE(th.legacy_locked_unwithdrawn, 0)                AS legacy_locked_unwithdrawn,
        COALESCE(a.allocated_tokens, 0)                          AS allocated_tokens,
        COALESCE(a.allocation_count, 0)                          AS allocation_count,
-       c.indexing_reward_cut,
-       c.query_fee_cut,
+       -- no cut ever set means the indexer keeps everything: Horizon's feeCut defaults to 0 for
+       -- delegators, which the subgraph reports as 1,000,000 (one indexer read 0 here against that)
+       COALESCE(c.indexing_reward_cut, 1000000)                 AS indexing_reward_cut,
+       COALESCE(c.query_fee_cut, 1000000)                       AS query_fee_cut,
        c.last_delegation_parameter_update,
        COALESCE(r.rewards_earned, 0)                            AS rewards_earned,
        COALESCE(f.query_fees_collected, 0)                      AS query_fees_collected,
@@ -390,7 +393,11 @@ dep_signal AS (
   ) GROUP BY 1
 ),
 -- indexers' net query fees on the deployment, the subgraph's `queryFeesAmount` (see lodestar_deployments)
-dep_fees AS (SELECT "subgraphDeploymentId" AS dep, SUM(CAST("tokensCollected" AS HUGEINT) - CAST("tokensCurators" AS HUGEINT)) AS query_fees_amount FROM subgraph_service__query_fees_collected GROUP BY 1),
+dep_fees AS (SELECT dep, SUM(t) AS query_fees_amount FROM (
+  SELECT "subgraphDeploymentId" AS dep, CAST("tokensCollected" AS HUGEINT) - CAST("tokensCurators" AS HUGEINT) - (CAST("tokensCollected" AS HUGEINT) // 100) AS t FROM subgraph_service__query_fees_collected
+  UNION ALL SELECT "subgraphDeploymentID", CAST("queryFees" AS HUGEINT) FROM staking_legacy__rebate_collected
+  UNION ALL SELECT "subgraphDeploymentID", CAST(tokens AS HUGEINT) - CAST("curationFees" AS HUGEINT) FROM staking_legacy__allocation_collected
+) GROUP BY 1),
 dep_stake AS (SELECT subgraph_deployment AS dep, SUM(allocated_tokens) AS staked_tokens FROM lodestar_allocations WHERE status = 'Active' GROUP BY 1)
 SELECT p.curator || '-' || CAST(p.dep AS VARCHAR)   AS id,
        p.curator,

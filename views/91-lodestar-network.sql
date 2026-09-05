@@ -168,12 +168,19 @@ bridge AS (
   SELECT (SELECT SUM(CAST(amount AS HUGEINT)) FROM graph_token__bridge_minted) AS minted,
          (SELECT SUM(CAST(amount AS HUGEINT)) FROM graph_token__bridge_burned) AS burned
 ),
--- All-time totals, folded from the epoch view rather than recomputed from the events, so that the
--- two surfaces cannot disagree: `/api/epochs` and `/api/grt-flow` read one definition.
+-- All-time totals, from the events. They were folded from `lodestar_epochs`, but `epoch_boundaries`
+-- begins at epoch 1104 (the first `EpochRun` the nest holds) and 631M GRT of legacy `RewardsAssigned`
+-- sit in epochs 113..1103, so the fold read 196M against the gateway's 837M. Summed from the events
+-- both eras give 837,303,089 GRT, exact. Query fees follow the subgraph's own counter, which is gross
+-- for the legacy era (`RebateCollected.tokens`, `AllocationCollected.tokens`) and net of only the 1%
+-- protocol cut for Horizon (`tokensCollected - tokensCollected // 100`, truncated per event) - not the
+-- indexer's net that `lodestar_epochs` and the deployments state. Measured to four digits, then exact.
 epoch_totals AS (
-  SELECT SUM(total_rewards)        AS indexing_rewards,
-         SUM(query_fees_collected) AS query_fees
-  FROM lodestar_epochs
+  SELECT (SELECT SUM(CAST(amount AS HUGEINT)) FROM rewards__rewards_assigned)
+         + (SELECT SUM(CAST(amount AS HUGEINT)) FROM rewards__horizon_rewards_assigned) AS indexing_rewards,
+         (SELECT SUM(CAST(tokens AS HUGEINT)) FROM staking_legacy__rebate_collected)
+         + (SELECT SUM(CAST(tokens AS HUGEINT)) FROM staking_legacy__allocation_collected)
+         + (SELECT SUM(CAST("tokensCollected" AS HUGEINT) - CAST("tokensCollected" AS HUGEINT) // 100) FROM subgraph_service__query_fees_collected) AS query_fees
 )
 SELECT (SELECT total      FROM staked)     AS total_tokens_staked,
        -- the subgraph's `totalDelegatedTokens` is the pools net of thawing, and summing `lodestar_indexers`

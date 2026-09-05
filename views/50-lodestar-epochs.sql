@@ -351,12 +351,35 @@ LEFT JOIN per_epoch p ON p.epoch = b.epoch;
 -- The per-epoch totals Lodestar wants. Rewards carry their own epoch; query fees do not, so they are
 -- bucketed by block against the boundaries above.
 CREATE VIEW lodestar_epochs AS
-WITH rewards AS (
-  SELECT CAST("currentEpoch" AS HUGEINT) AS epoch,
-         SUM(CAST("tokensRewards" AS HUGEINT))           AS total_rewards,
-         SUM(CAST("tokensIndexerRewards" AS HUGEINT))    AS total_indexer_rewards,
-         SUM(CAST("tokensDelegationRewards" AS HUGEINT)) AS total_delegator_rewards
-  FROM subgraph_service__indexing_rewards_collected GROUP BY 1
+-- Legacy `RewardsAssigned` carries the epoch and the whole amount; the delegators' share is the pool's
+-- cut in force at that block (contract rounding, `amount - amount * cut // 1e6`), and nothing when
+-- the pool had no shares - the same model `lodestar_indexer_ledger` measured exact against the
+-- contracts. Horizon's `IndexingRewardsCollected` states the split itself.
+WITH legacy_cuts AS (
+  SELECT LOWER(indexer) AS sp, CAST("indexingRewardCut" AS HUGEINT) AS cut, block_number * 100000 + log_index AS k FROM staking_legacy__delegation_parameters_updated
+),
+legacy_shares AS (
+  SELECT sp, k, SUM(sh) OVER (PARTITION BY sp ORDER BY k ROWS UNBOUNDED PRECEDING) AS cum_shares FROM (
+    SELECT LOWER(indexer) AS sp, block_number * 100000 + log_index AS k,  CAST(shares AS HUGEINT) AS sh FROM staking_legacy__stake_delegated
+    UNION ALL SELECT LOWER(indexer), block_number * 100000 + log_index, -CAST(shares AS HUGEINT) FROM staking_legacy__stake_delegated_locked
+    UNION ALL SELECT LOWER("serviceProvider"), block_number * 100000 + log_index,  CAST(shares AS HUGEINT) FROM staking__tokens_delegated
+    UNION ALL SELECT LOWER("serviceProvider"), block_number * 100000 + log_index, -CAST(shares AS HUGEINT) FROM staking__tokens_undelegated
+  )
+),
+legacy_rewards AS (
+  SELECT r.epoch, r.amount,
+         CASE WHEN c.cut IS NOT NULL AND COALESCE(ps.cum_shares, 0) > 0 THEN r.amount - r.amount * c.cut // 1000000 ELSE 0 END AS delegator_share
+  FROM (SELECT LOWER(indexer) AS sp, CAST(epoch AS HUGEINT) AS epoch, CAST(amount AS HUGEINT) AS amount, block_number * 100000 + log_index AS k FROM rewards__rewards_assigned) r
+  ASOF LEFT JOIN legacy_cuts c ON r.sp = c.sp AND r.k >= c.k
+  ASOF LEFT JOIN legacy_shares ps ON r.sp = ps.sp AND r.k >= ps.k
+),
+rewards AS (
+  SELECT epoch, SUM(total) AS total_rewards, SUM(indexer) AS total_indexer_rewards, SUM(delegator) AS total_delegator_rewards FROM (
+    SELECT CAST("currentEpoch" AS HUGEINT) AS epoch, CAST("tokensRewards" AS HUGEINT) AS total,
+           CAST("tokensIndexerRewards" AS HUGEINT) AS indexer, CAST("tokensDelegationRewards" AS HUGEINT) AS delegator
+    FROM subgraph_service__indexing_rewards_collected
+    UNION ALL SELECT epoch, amount, amount - delegator_share, delegator_share FROM legacy_rewards
+  ) GROUP BY 1
 ),
 -- `queryFeesCollected` in the network subgraph is **net**, not gross: the curator share and a 1%
 -- protocol tax are both taken out, and the tax is truncated **per event** rather than on the epoch
@@ -364,13 +387,15 @@ WITH rewards AS (
 -- enough to look like rounding noise and is in fact a different quantity. Integer division is
 -- required: DuckDB's `/` returns a DOUBLE and loses precision outright at 1e23.
 -- Measured over the 175 closed epochs from 1195 up, this took exact agreement from 0 to 145.
+-- Both eras: legacy `RebateCollected.queryFees` is already the indexer's net and `curationFees` the
+-- curators'; the pre-rebate `AllocationCollected` likewise less its `curationFees`.
 fees AS (
-  SELECT b.epoch,
-         SUM(CAST(q."tokensCollected" AS HUGEINT)
-             - CAST(q."tokensCurators" AS HUGEINT)
-             - (CAST(q."tokensCollected" AS HUGEINT) // 100)) AS query_fees_collected,
-         SUM(CAST(q."tokensCurators"  AS HUGEINT))            AS curator_query_fees
-  FROM subgraph_service__query_fees_collected q
+  SELECT b.epoch, SUM(q.net) AS query_fees_collected, SUM(q.curators) AS curator_query_fees
+  FROM (
+    SELECT block_number, CAST("tokensCollected" AS HUGEINT) - CAST("tokensCurators" AS HUGEINT) - (CAST("tokensCollected" AS HUGEINT) // 100) AS net, CAST("tokensCurators" AS HUGEINT) AS curators FROM subgraph_service__query_fees_collected
+    UNION ALL SELECT block_number, CAST("queryFees" AS HUGEINT), CAST("curationFees" AS HUGEINT) FROM staking_legacy__rebate_collected
+    UNION ALL SELECT block_number, CAST(tokens AS HUGEINT) - CAST("curationFees" AS HUGEINT), CAST("curationFees" AS HUGEINT) FROM staking_legacy__allocation_collected
+  ) q
   JOIN epoch_boundaries b
     ON q.block_number >= b.start_block AND q.block_number <= b.end_block
   GROUP BY 1
@@ -401,8 +426,11 @@ deposits AS (
   GROUP BY 1
 ),
 protocol_tax AS (
-  SELECT b.epoch, SUM(CAST(q."tokensCollected" AS HUGEINT) // 100) AS taxed_query_fees
-  FROM subgraph_service__query_fees_collected q
+  SELECT b.epoch, SUM(q.tax) AS taxed_query_fees
+  FROM (
+    SELECT block_number, CAST("tokensCollected" AS HUGEINT) // 100 AS tax FROM subgraph_service__query_fees_collected
+    UNION ALL SELECT block_number, CAST("protocolTax" AS HUGEINT) FROM staking_legacy__rebate_collected
+  ) q
   JOIN epoch_boundaries b ON q.block_number >= b.start_block AND q.block_number <= b.end_block
   GROUP BY 1
 )
