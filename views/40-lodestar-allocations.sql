@@ -35,6 +35,7 @@ rewards AS (
   SELECT "allocationId" AS id,
          poi,
          CAST("tokensRewards" AS HUGEINT) AS indexing_rewards,
+         CAST("tokensDelegationRewards" AS HUGEINT) AS indexing_delegator_rewards,
          CAST("currentEpoch" AS HUGEINT)  AS rewards_epoch,
          ROW_NUMBER() OVER (PARTITION BY "allocationId" ORDER BY block_number DESC, log_index DESC) AS rn
   FROM subgraph_service__indexing_rewards_collected
@@ -71,6 +72,8 @@ SELECT c.id,
        CASE WHEN cl.id IS NULL THEN NULL ELSE rw.rewards_epoch END AS closed_at_epoch,
        rw.poi,
        COALESCE(rw.indexing_rewards, 0)             AS indexing_rewards,
+       -- the delegators' share of those rewards, the subgraph's `indexingDelegatorRewards` (nuthatch#1160)
+       COALESCE(rw.indexing_delegator_rewards, 0)   AS indexing_delegator_rewards,
        COALESCE(f.query_fees_collected, 0)          AS query_fees_collected,
        CASE WHEN cl.id IS NULL THEN 'Active' ELSE 'Closed' END AS status,
        cl.force_closed,
