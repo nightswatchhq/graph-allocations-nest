@@ -36,8 +36,13 @@ closed AS (
 -- Both eras. Legacy allocations were paid by `RewardsAssigned` (no POI on the event, no delegator
 -- split); Horizon ones by `IndexingRewardsCollected`. The network's all-time rewards read 196M against
 -- the gateway's 837M with the legacy era missing; with it, 837,303,089 GRT exact.
+-- Horizon collects rewards on every POI, not once at close: one closed allocation had two collections
+-- and the newest alone read 0.48 GRT against the gateway's 639.5. Amounts sum over the collections; the
+-- POI and the epoch are the newest's.
 rewards AS (
-  SELECT id, poi, indexing_rewards, indexing_delegator_rewards, rewards_epoch,
+  SELECT id, poi, rewards_epoch,
+         SUM(indexing_rewards) OVER (PARTITION BY id)           AS indexing_rewards,
+         SUM(indexing_delegator_rewards) OVER (PARTITION BY id) AS indexing_delegator_rewards,
          ROW_NUMBER() OVER (PARTITION BY id ORDER BY block_number DESC, log_index DESC) AS rn
   FROM (
     SELECT "allocationId" AS id, poi, CAST("tokensRewards" AS HUGEINT) AS indexing_rewards,

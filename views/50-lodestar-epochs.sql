@@ -338,6 +338,9 @@ SELECT b.epoch,
        -- An epoch ends where the next one starts. The newest has no successor yet, so it runs to its
        -- own last observation - open-ended rather than wrong.
        COALESCE(LEAD(b.start_block) OVER (ORDER BY b.epoch) - 1, p.last_seen, b.start_block) AS end_block,
+       -- for bucketing: the newest epoch takes everything after it too, or the current epoch's fees
+       -- and signal read 0 until the next `EpochRun` (nuthatch#1160)
+       COALESCE(LEAD(b.start_block) OVER (ORDER BY b.epoch) - 1, 9223372036854775807) AS until_block,
        p.last_seen,
        -- Zero where the boundary is exact: there is no unobserved window left to warn about. For an
        -- observed row it keeps its old meaning, the width of the gap the true start could lie in.
@@ -397,7 +400,7 @@ fees AS (
     UNION ALL SELECT block_number, CAST(tokens AS HUGEINT) - CAST("curationFees" AS HUGEINT), CAST("curationFees" AS HUGEINT) FROM staking_legacy__allocation_collected
   ) q
   JOIN epoch_boundaries b
-    ON q.block_number >= b.start_block AND q.block_number <= b.end_block
+    ON q.block_number >= b.start_block AND q.block_number <= b.until_block
   GROUP BY 1
 ),
 -- `signalledTokens` is **gross signal net of the curation tax**, and burns are not subtracted from
@@ -411,7 +414,7 @@ signal AS (
   SELECT b.epoch,
          SUM(CAST(s.tokens AS HUGEINT) - CAST(s."curationTax" AS HUGEINT)) AS signalled_tokens
   FROM curation__signalled s
-  JOIN epoch_boundaries b ON s.block_number >= b.start_block AND s.block_number <= b.end_block
+  JOIN epoch_boundaries b ON s.block_number >= b.start_block AND s.block_number <= b.until_block
   GROUP BY 1
 ),
 -- The subgraph's `Epoch.stakeDeposited`: own stake deposited during the epoch, both eras' events
@@ -422,7 +425,7 @@ deposits AS (
   SELECT b.epoch, SUM(t) AS stake_deposited FROM (
     SELECT block_number, CAST(tokens AS HUGEINT) AS t FROM staking_legacy__stake_deposited
     UNION ALL SELECT block_number, CAST(tokens AS HUGEINT) FROM staking__horizon_stake_deposited
-  ) d JOIN epoch_boundaries b ON d.block_number >= b.start_block AND d.block_number <= b.end_block
+  ) d JOIN epoch_boundaries b ON d.block_number >= b.start_block AND d.block_number <= b.until_block
   GROUP BY 1
 ),
 protocol_tax AS (
@@ -431,7 +434,7 @@ protocol_tax AS (
     SELECT block_number, CAST("tokensCollected" AS HUGEINT) // 100 AS tax FROM subgraph_service__query_fees_collected
     UNION ALL SELECT block_number, CAST("protocolTax" AS HUGEINT) FROM staking_legacy__rebate_collected
   ) q
-  JOIN epoch_boundaries b ON q.block_number >= b.start_block AND q.block_number <= b.end_block
+  JOIN epoch_boundaries b ON q.block_number >= b.start_block AND q.block_number <= b.until_block
   GROUP BY 1
 )
 SELECT b.epoch                                  AS id,
