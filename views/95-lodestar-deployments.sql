@@ -8,7 +8,8 @@
 -- deployment, per the `fees` CTE below. `staked_tokens` is active allocation.
 -- `created_at` is the first block anything touched the deployment: its first allocation or its first
 -- signal, whichever came first; the subgraph dates it from its first appearance the same way.
--- `active_allocation_count` and `curator_count` are the lengths the gateway path counted.
+-- `active_allocation_count` and `curator_count` are the lengths the gateway path counted (the latter
+-- counting exited positions too, as the subgraph's list does).
 CREATE VIEW lodestar_deployments AS
 WITH signal AS (
   SELECT dep, SUM(tok) AS signalled_tokens, MIN(ts) AS first_ts FROM (
@@ -36,7 +37,8 @@ allocs AS (
   FROM lodestar_allocations GROUP BY 1
 ),
 curators AS (
-  SELECT LOWER(subgraph_deployment) AS dep, COUNT(*) FILTER (WHERE signal > 0) AS curator_count FROM lodestar_curator_signals GROUP BY 1
+  -- every position ever, exited ones included: that is the length of the subgraph's `curatorSignals`
+  SELECT LOWER(subgraph_deployment) AS dep, COUNT(*) AS curator_count FROM lodestar_curator_signals GROUP BY 1
 ),
 deps AS (SELECT dep FROM signal UNION SELECT dep FROM allocs)
 SELECT d.dep                                          AS id,

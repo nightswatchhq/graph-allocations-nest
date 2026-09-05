@@ -162,20 +162,24 @@ allocated AS (
 -- verifier; the subgraph reports the subgraph service's, and that is the only verifier that has set
 -- any, so no filter is applied and the parity run will say if that stops being true.
 cut_events AS (
-  SELECT LOWER(indexer) AS sp, 'indexing' AS kind, CAST("indexingRewardCut" AS HUGEINT) AS cut, block_number AS bn, log_index AS li, block_timestamp AS ts FROM staking_legacy__delegation_parameters_updated
-  UNION ALL SELECT LOWER(indexer), 'query',    CAST("queryFeeCut" AS HUGEINT),       block_number, log_index, block_timestamp FROM staking_legacy__delegation_parameters_updated
+  SELECT LOWER(indexer) AS sp, 'indexing' AS kind, CAST("indexingRewardCut" AS HUGEINT) AS cut, block_number AS bn, log_index AS li, block_timestamp AS ts, 'legacy' AS era FROM staking_legacy__delegation_parameters_updated
+  UNION ALL SELECT LOWER(indexer), 'query',    CAST("queryFeeCut" AS HUGEINT),       block_number, log_index, block_timestamp, 'legacy' FROM staking_legacy__delegation_parameters_updated
   -- Horizon's `feeCut` is the share that goes to DELEGATORS (HorizonStaking `_delegationFeeCut`); the
   -- legacy cut, and the subgraph's field, is the share the indexer keeps. Measured on 8107: P2P's
   -- queryFeeCut read 0 here against 1,000,000 on the gateway, Ellipfra's 570,000 against 430,000.
   UNION ALL SELECT LOWER("serviceProvider"), CASE WHEN CAST("paymentType" AS INTEGER) = 2 THEN 'indexing' WHEN CAST("paymentType" AS INTEGER) = 0 THEN 'query' ELSE 'other' END,
-                   1000000 - CAST("feeCut" AS HUGEINT), block_number, log_index, block_timestamp FROM staking__delegation_fee_cut_set
+                   1000000 - CAST("feeCut" AS HUGEINT), block_number, log_index, block_timestamp, 'horizon' FROM staking__delegation_fee_cut_set
 ),
+-- An indexer with a provision is on Horizon, where the legacy parameters no longer apply: its cut is
+-- the newest `DelegationFeeCutSet`, or "keeps everything" if none was set. 13 indexers carried a legacy
+-- 800,000 or 750,000 here against the gateway's 1,000,000. Without a provision the legacy value stands.
 cuts AS (
-  SELECT sp,
-         MAX(cut) FILTER (WHERE kind = 'indexing' AND rn = 1) AS indexing_reward_cut,
-         MAX(cut) FILTER (WHERE kind = 'query'    AND rn = 1) AS query_fee_cut,
-         MAX(ts)                                              AS last_delegation_parameter_update
-  FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY sp, kind ORDER BY bn DESC, li DESC) AS rn FROM cut_events)
+  SELECT c.sp,
+         MAX(c.cut) FILTER (WHERE c.kind = 'indexing' AND c.rn = 1) AS indexing_reward_cut,
+         MAX(c.cut) FILTER (WHERE c.kind = 'query'    AND c.rn = 1) AS query_fee_cut,
+         MAX(c.ts)                                                  AS last_delegation_parameter_update
+  FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY sp, kind ORDER BY bn DESC, li DESC) AS rn FROM cut_events
+        WHERE era = 'horizon' OR sp NOT IN (SELECT LOWER("serviceProvider") FROM staking__provision_created)) c
   GROUP BY 1
 ),
 -- Indexing rewards assigned, both eras; the subgraph's `rewardsEarned` is the gross figure before the
@@ -208,6 +212,17 @@ registry AS (
     FROM (
       SELECT indexer, url, geohash, block_number, log_index FROM service_registry__service_registered
       UNION ALL SELECT indexer, NULL, NULL, block_number, log_index FROM service_registry__service_unregistered
+      -- Horizon indexers register with the SubgraphService, whose event carries abi.encode(string url,
+      -- string geohash, address rewardsDestination) as `data`: three head words, then each string as a
+      -- length word and padded bytes. 14 of 184 indexers had no legacy registration and read url null.
+      UNION ALL SELECT sp, url, geohash, block_number, log_index FROM (
+        SELECT sp, block_number, log_index, ulen, h,
+               decode(from_hex(substr(h, 257, ulen * 2))) AS url,
+               CAST(('0x' || substr(h, 257 + ((ulen + 31) // 32) * 64, 64)) AS BIGINT) AS glen
+        FROM (SELECT "serviceProvider" AS sp, block_number, log_index, substr(data, 3) AS h,
+                     CAST(('0x' || substr(substr(data, 3), 193, 64)) AS BIGINT) AS ulen
+              FROM subgraph_service__service_provider_registered)
+      ) x, LATERAL (SELECT decode(from_hex(substr(x.h, 257 + ((x.ulen + 31) // 32) * 64 + 64, x.glen * 2))) AS geohash) g
     )
   ) WHERE rn = 1
 ),
