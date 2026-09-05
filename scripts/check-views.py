@@ -64,13 +64,25 @@ data="\n".join([
  ins('staking__tokens_undelegated', block_number=4, block_timestamp=1004, serviceProvider='0xI', verifier='0xV', delegator='0xD', tokens=90*W, shares=75*W),
  ins('staking__delegated_tokens_withdrawn', block_number=5, block_timestamp=1005, serviceProvider='0xI', verifier='0xV', delegator='0xD', tokens=60*W),
  ins('staking__thaw_request_created', block_number=4, log_index=1, block_timestamp=1004, requestType=1, serviceProvider='0xI', verifier='0xV', owner='0xD', shares=75*W, thawingUntil=1234567890, thawRequestId='0xreq', nonce=1),
+ # a second pool at real-world scale: a 15,572 GRT position beside a 1,024,858 GRT one. shares * pool_tokens
+ # is 1.6e46 and overflowed INT128 on 8107 before staked_tokens split its whole-share part from the remainder.
+ ins('staking__horizon_stake_deposited', block_number=1, log_index=5, block_timestamp=1000, serviceProvider='0xJ', tokens=100000*W),
+ ins('staking__tokens_delegated', block_number=6, block_timestamp=1006, serviceProvider='0xJ', verifier='0xV', delegator='0xE', tokens=15572*W, shares=15572*W),
+ ins('staking__tokens_delegated', block_number=6, log_index=1, block_timestamp=1006, serviceProvider='0xJ', verifier='0xV', delegator='0xF', tokens=1024858*W, shares=1024858*W),
 ])
 q = ("SELECT CAST(share_amount AS VARCHAR), round(personal_exchange_rate, 6), CAST(realized_rewards // 1000000000000000000 AS VARCHAR), "
      "CAST(total_delegated_tokens // 1000000000000000000 AS VARCHAR), CAST(total_undelegated_tokens // 1000000000000000000 AS VARCHAR), "
-     "CAST(locked_tokens // 1000000000000000000 AS VARCHAR), locked_until, active FROM lodestar_delegator_stakes;")
+     "CAST(locked_tokens // 1000000000000000000 AS VARCHAR), locked_until, active FROM lodestar_delegator_stakes WHERE indexer = '0xi';")
 r = subprocess.run(['duckdb', ':memory:', '-csv', '-noheader'], input=sql + "\n" + data + "\n" + q, capture_output=True, text=True)
 got = r.stdout.strip().split("\n")[-1] if r.stdout.strip() else ''
 want = "0,1.066667,20,130,150,90,1234567890,false"
 if r.returncode != 0 or got != want:
     print("DELEGATOR FOLD WRONG\n  want", want, "\n  got ", got, "\n", r.stderr.strip()[:800]); sys.exit(1)
 print("DELEGATOR FOLD MATCHES THE HAND-COMPUTED POSITION")
+q2 = "SELECT delegator, CAST(round(staked_tokens / 1000000000000000000) AS BIGINT) FROM lodestar_delegator_stakes WHERE indexer = '0xj' ORDER BY delegator;"
+r = subprocess.run(['duckdb', ':memory:', '-csv', '-noheader'], input=sql + "\n" + data + "\n" + q2, capture_output=True, text=True)
+got = r.stdout.strip()
+want = "0xe,15572\n0xf,1024858"
+if r.returncode != 0 or got != want:
+    print("WEI-SCALE STAKE WRONG\n  want", repr(want), "\n  got ", repr(got), "\n", r.stderr.strip()[:800]); sys.exit(1)
+print("WEI-SCALE STAKE DOES NOT OVERFLOW AND ROUNDS TO THE CONTRACT'S ANSWER")

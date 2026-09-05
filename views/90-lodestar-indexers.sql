@@ -338,8 +338,13 @@ SELECT x.delegator || '-' || x.indexer                        AS id,
        x.delegator,
        x.indexer,
        x.share_amount,
+       -- shares * pool_tokens / pool_shares, the contract's uint256 formula. Two wei-scale HUGEINTs
+       -- multiplied overflow INT128 (a 15,572 GRT position in a 1.04M GRT pool did, on real data), so
+       -- the whole-share part stays exact and only the fractional remainder goes through DOUBLE,
+       -- which is within one part in 1e16 of the contract's answer.
        CASE WHEN i.delegator_shares > 0
-            THEN CAST(x.share_amount * i.delegated_tokens / i.delegator_shares AS HUGEINT)
+            THEN (x.share_amount // i.delegator_shares) * i.delegated_tokens
+                 + CAST(CAST(x.share_amount % i.delegator_shares AS DOUBLE) * CAST(i.delegated_tokens AS DOUBLE) / CAST(i.delegator_shares AS DOUBLE) AS HUGEINT)
             ELSE 0 END                                         AS staked_tokens,
        x.total_delegated_tokens,
        x.total_undelegated_tokens,
