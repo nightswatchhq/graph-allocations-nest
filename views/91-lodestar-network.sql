@@ -176,7 +176,10 @@ epoch_totals AS (
   FROM lodestar_epochs
 )
 SELECT (SELECT total      FROM staked)     AS total_tokens_staked,
-       (SELECT total      FROM delegated)  AS total_delegated_tokens,
+       -- the subgraph's `totalDelegatedTokens` is the pools net of thawing, and summing `lodestar_indexers`
+       -- that way reproduced it to the wei (1,074,963,614 GRT); this view's own `delegation` netting
+       -- lacks the rewards the pools accrue and read 626M. `delegated` still serves the delegator counts.
+       (SELECT SUM(delegated_tokens - delegated_thawing_tokens) FROM lodestar_indexers) AS total_delegated_tokens,
        (SELECT total      FROM signalled)  AS total_tokens_signalled,
        (SELECT total      FROM allocated)  AS total_tokens_allocated,
        (SELECT raw        FROM supply)     AS total_supply_raw,

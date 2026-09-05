@@ -26,7 +26,9 @@ closed AS (
   SELECT "allocationId"  AS id,
          block_timestamp AS closed_at,
          block_number    AS closed_at_block,
-         "forceClosed"   AS force_closed
+         -- decoded as the text 'true'/'false'; Boolean('false') is true in JavaScript, which is how every
+         -- closed allocation read forceClosed on the nest path. Cast so the JSON carries a real boolean.
+         CAST("forceClosed" AS BOOLEAN) AS force_closed
   FROM subgraph_service__allocation_closed
 ),
 -- The POI lives here, not on `AllocationClosed` - which is where the subgraph's shape implies it

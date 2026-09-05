@@ -22,8 +22,11 @@
 -- `pool_delta` follows the model measured exact against `getDelegationPool` on every indexer: the
 -- delegation events themselves, the explicit pool additions, the legacy-era delegator reward share
 -- computed per `RewardsAssigned` from the cut in force (contract rounding, skipped when the pool was
--- empty), and the silent share on legacy allocations closed after the upgrade. Thawing is not in the
--- pool figure, as the subgraph's `delegatedTokens` is not.
+-- empty), and the silent share on legacy allocations closed after the upgrade. Thawing is not in
+-- `pool_delta`: summed over every indexer that is the subgraph's `totalDelegatedTokens` to the wei.
+-- The subgraph's per-indexer `delegatedTokens` *does* include thawing (P2P: 158,046,448 GRT, equal to
+-- `getDelegationPool().tokens`), so `thawing_delta` runs beside it - up at `TokensUndelegated`, down
+-- at `DelegatedTokensWithdrawn` - and an as-of caller adds the two for that figure.
 -- ---------------------------------------------------------------------------------------------
 CREATE VIEW lodestar_indexer_ledger AS
 WITH horizon_start AS (SELECT MIN(block_number) AS bn FROM staking__horizon_stake_deposited),
@@ -51,23 +54,24 @@ legacy_path_share AS (
   WHERE h.a IN (SELECT LOWER("allocationID") FROM staking_legacy__allocation_created) AND COALESCE(ps.cum_shares, 0) > 0
 )
 -- own stake
-SELECT LOWER(indexer) AS indexer, CAST(block_timestamp AS BIGINT) AS ts, block_number, block_number * 100000 + log_index AS k, 'stake_deposited' AS kind,  CAST(tokens AS HUGEINT) AS stake_delta, CAST(0 AS HUGEINT) AS pool_delta, CAST(0 AS HUGEINT) AS shares_delta FROM staking_legacy__stake_deposited
-UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_withdrawn', -CAST(tokens AS HUGEINT), 0, 0 FROM staking_legacy__stake_withdrawn
-UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_slashed',   -CAST(tokens AS HUGEINT), 0, 0 FROM staking_legacy__stake_slashed
-UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_deposited',  CAST(tokens AS HUGEINT), 0, 0 FROM staking__horizon_stake_deposited
-UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_withdrawn', -CAST(tokens AS HUGEINT), 0, 0 FROM staking__horizon_stake_withdrawn
-UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_slashed',   -CAST(tokens AS HUGEINT), 0, 0 FROM staking__provision_slashed
+SELECT LOWER(indexer) AS indexer, CAST(block_timestamp AS BIGINT) AS ts, block_number, block_number * 100000 + log_index AS k, 'stake_deposited' AS kind,  CAST(tokens AS HUGEINT) AS stake_delta, CAST(0 AS HUGEINT) AS pool_delta, CAST(0 AS HUGEINT) AS shares_delta, CAST(0 AS HUGEINT) AS thawing_delta FROM staking_legacy__stake_deposited
+UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_withdrawn', -CAST(tokens AS HUGEINT), 0, 0, 0 FROM staking_legacy__stake_withdrawn
+UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_slashed',   -CAST(tokens AS HUGEINT), 0, 0, 0 FROM staking_legacy__stake_slashed
+UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_deposited',  CAST(tokens AS HUGEINT), 0, 0, 0 FROM staking__horizon_stake_deposited
+UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_withdrawn', -CAST(tokens AS HUGEINT), 0, 0, 0 FROM staking__horizon_stake_withdrawn
+UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_slashed',   -CAST(tokens AS HUGEINT), 0, 0, 0 FROM staking__provision_slashed
 -- delegation pool
-UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'delegated',   0,  CAST(tokens AS HUGEINT),  CAST(shares AS HUGEINT) FROM staking_legacy__stake_delegated
-UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'undelegated', 0, -CAST(tokens AS HUGEINT), -CAST(shares AS HUGEINT) FROM staking_legacy__stake_delegated_locked
-UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'delegated',   0,  CAST(tokens AS HUGEINT),  CAST(shares AS HUGEINT) FROM staking__tokens_delegated
-UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'undelegated', 0, -CAST(tokens AS HUGEINT), -CAST(shares AS HUGEINT) FROM staking__tokens_undelegated
-UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'pool_added',  0,  CAST(tokens AS HUGEINT), 0 FROM staking__tokens_to_delegation_pool_added
-UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'pool_slashed', 0, -CAST(tokens AS HUGEINT), 0 FROM staking__delegation_slashed
-UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'rebate_delegation_rewards', 0, CAST("delegationRewards" AS HUGEINT), 0 FROM staking_legacy__rebate_collected
-UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'rebate_delegation_fees',    0, CAST("delegationFees" AS HUGEINT)   , 0 FROM staking_legacy__rebate_claimed
-UNION ALL SELECT sp, ts, bn, k, 'legacy_reward_share', 0, t, 0 FROM legacy_reward_share
-UNION ALL SELECT sp, ts, bn, k, 'legacy_path_share', 0, t, 0 FROM legacy_path_share;
+UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'delegated',   0,  CAST(tokens AS HUGEINT),  CAST(shares AS HUGEINT), 0 FROM staking_legacy__stake_delegated
+UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'undelegated', 0, -CAST(tokens AS HUGEINT), -CAST(shares AS HUGEINT), 0 FROM staking_legacy__stake_delegated_locked
+UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'delegated',   0,  CAST(tokens AS HUGEINT),  CAST(shares AS HUGEINT), 0 FROM staking__tokens_delegated
+UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'undelegated', 0, -CAST(tokens AS HUGEINT), -CAST(shares AS HUGEINT), CAST(tokens AS HUGEINT) FROM staking__tokens_undelegated
+UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'pool_added',  0,  CAST(tokens AS HUGEINT), 0, 0 FROM staking__tokens_to_delegation_pool_added
+UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'pool_slashed', 0, -CAST(tokens AS HUGEINT), 0, 0 FROM staking__delegation_slashed
+UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'rebate_delegation_rewards', 0, CAST("delegationRewards" AS HUGEINT), 0, 0 FROM staking_legacy__rebate_collected
+UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'rebate_delegation_fees',    0, CAST("delegationFees" AS HUGEINT)   , 0, 0 FROM staking_legacy__rebate_claimed
+UNION ALL SELECT LOWER("serviceProvider"), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'withdrawn', 0, 0, 0, -CAST(tokens AS HUGEINT) FROM staking__delegated_tokens_withdrawn
+UNION ALL SELECT sp, ts, bn, k, 'legacy_reward_share', 0, t, 0, 0 FROM legacy_reward_share
+UNION ALL SELECT sp, ts, bn, k, 'legacy_path_share', 0, t, 0, 0 FROM legacy_path_share;
 
 -- ---------------------------------------------------------------------------------------------
 -- Per-indexer stake, delegation pool, cuts, rewards, fees, registry and provisions.
@@ -160,8 +164,11 @@ allocated AS (
 cut_events AS (
   SELECT LOWER(indexer) AS sp, 'indexing' AS kind, CAST("indexingRewardCut" AS HUGEINT) AS cut, block_number AS bn, log_index AS li, block_timestamp AS ts FROM staking_legacy__delegation_parameters_updated
   UNION ALL SELECT LOWER(indexer), 'query',    CAST("queryFeeCut" AS HUGEINT),       block_number, log_index, block_timestamp FROM staking_legacy__delegation_parameters_updated
+  -- Horizon's `feeCut` is the share that goes to DELEGATORS (HorizonStaking `_delegationFeeCut`); the
+  -- legacy cut, and the subgraph's field, is the share the indexer keeps. Measured on 8107: P2P's
+  -- queryFeeCut read 0 here against 1,000,000 on the gateway, Ellipfra's 570,000 against 430,000.
   UNION ALL SELECT LOWER("serviceProvider"), CASE WHEN CAST("paymentType" AS INTEGER) = 2 THEN 'indexing' WHEN CAST("paymentType" AS INTEGER) = 0 THEN 'query' ELSE 'other' END,
-                   CAST("feeCut" AS HUGEINT), block_number, log_index, block_timestamp FROM staking__delegation_fee_cut_set
+                   1000000 - CAST("feeCut" AS HUGEINT), block_number, log_index, block_timestamp FROM staking__delegation_fee_cut_set
 ),
 cuts AS (
   SELECT sp,
@@ -216,7 +223,10 @@ SELECT s.sp                                                     AS id,
        s.staked_tokens,
        COALESCE(l.locked_tokens, 0)                             AS locked_tokens,
        l.locked_until,
-       COALESCE(p.delegated_net, 0) + COALESCE(pa.pool_rewards_added, 0) AS delegated_tokens,
+       -- The subgraph's `delegatedTokens` is the whole pool, thawing included: it read 158,046,448 GRT for
+       -- P2P against `getDelegationPool().tokens` of exactly that, while the pool net of its 38,093,038 GRT
+       -- thawing was what this column held. `delegated_thawing_tokens` beside it is the thawing part.
+       COALESCE(p.delegated_net, 0) + COALESCE(pa.pool_rewards_added, 0) + COALESCE(th.delegated_thawing_tokens, 0) AS delegated_tokens,
        COALESCE(p.delegated_net, 0)                             AS delegated_net,
        COALESCE(pa.pool_rewards_added, 0)                       AS delegated_pool_rewards,
        COALESCE(p.delegator_shares, 0)                          AS delegator_shares,
@@ -379,7 +389,8 @@ dep_signal AS (
     UNION ALL SELECT "subgraphDeploymentID",  CAST(tokens AS HUGEINT) FROM curation__collected
   ) GROUP BY 1
 ),
-dep_fees AS (SELECT "subgraphDeploymentID" AS dep, SUM(CAST(tokens AS HUGEINT)) AS query_fees_amount FROM curation__collected GROUP BY 1),
+-- indexers' net query fees on the deployment, the subgraph's `queryFeesAmount` (see lodestar_deployments)
+dep_fees AS (SELECT "subgraphDeploymentId" AS dep, SUM(CAST("tokensCollected" AS HUGEINT) - CAST("tokensCurators" AS HUGEINT)) AS query_fees_amount FROM subgraph_service__query_fees_collected GROUP BY 1),
 dep_stake AS (SELECT subgraph_deployment AS dep, SUM(allocated_tokens) AS staked_tokens FROM lodestar_allocations WHERE status = 'Active' GROUP BY 1)
 SELECT p.curator || '-' || CAST(p.dep AS VARCHAR)   AS id,
        p.curator,
@@ -419,8 +430,13 @@ WITH positions AS (
 SELECT curator                                            AS id,
        SUM(tokens_in)                                     AS total_signalled_tokens,
        SUM(tokens_out)                                    AS total_unsignalled_tokens,
-       COUNT(*)                                           AS signal_count,
-       COUNT(*) FILTER (WHERE net_signal > 0)             AS active_signal_count,
+       -- `signalCount` / `activeSignalCount` count Curation-level positions only; GNS (name signal)
+       -- positions are the subgraph's `nameSignalCount` and are reported separately. Counting both under
+       -- one name read 665 against 17 for one curator on the gateway.
+       COUNT(*) FILTER (WHERE position LIKE 'v:%')                          AS signal_count,
+       COUNT(*) FILTER (WHERE position LIKE 'v:%' AND net_signal > 0)       AS active_signal_count,
+       COUNT(*) FILTER (WHERE position LIKE 'n:%')                          AS name_signal_count,
+       COUNT(*) FILTER (WHERE position LIKE 'n:%' AND net_signal > 0)       AS active_name_signal_count,
        -- The subgraph's `Curator.realizedRewards` is marked "NOT IMPLEMENTED" in its own schema and no
        -- curation or GNS handler writes it, so it has been 0 on the gateway path since the field was
        -- added. Zero here is the same fact, stated rather than reproduced by accident.
