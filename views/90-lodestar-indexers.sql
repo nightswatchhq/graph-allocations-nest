@@ -303,7 +303,9 @@ LEFT JOIN lodestar_indexers i ON i.id = p.indexer;
 CREATE VIEW lodestar_curators AS
 WITH positions AS (
   SELECT curator, position, SUM(sig) AS net_signal, SUM(tin) AS tokens_in, SUM(tout) AS tokens_out FROM (
-    SELECT LOWER(curator) AS curator, 'v:' || CAST("subgraphDeploymentID" AS VARCHAR) AS position,  CAST(signal AS HUGEINT) AS sig, CAST(tokens AS HUGEINT) AS tin, CAST(0 AS HUGEINT) AS tout FROM curation__signalled
+    -- `totalSignalledTokens` is net of the curation tax in the subgraph (`tokens.minus(curationTax)`,
+    -- curation.ts handleSignalled); the GNS deposit is what was deposited.
+    SELECT LOWER(curator) AS curator, 'v:' || CAST("subgraphDeploymentID" AS VARCHAR) AS position,  CAST(signal AS HUGEINT) AS sig, CAST(tokens AS HUGEINT) - CAST("curationTax" AS HUGEINT) AS tin, CAST(0 AS HUGEINT) AS tout FROM curation__signalled
     UNION ALL SELECT LOWER(curator), 'v:' || CAST("subgraphDeploymentID" AS VARCHAR), -CAST(signal AS HUGEINT), 0, CAST(tokens AS HUGEINT) FROM curation__burned
     UNION ALL SELECT LOWER(curator), 'n:' || CAST("subgraphID" AS VARCHAR),  CAST("nSignalCreated" AS HUGEINT), CAST("tokensDeposited" AS HUGEINT), 0 FROM gns__signal_minted
     UNION ALL SELECT LOWER(curator), 'n:' || CAST("subgraphID" AS VARCHAR), -CAST("nSignalBurnt" AS HUGEINT), 0, CAST("tokensReceived" AS HUGEINT) FROM gns__signal_burned
@@ -314,6 +316,10 @@ SELECT curator                                            AS id,
        SUM(tokens_out)                                    AS total_unsignalled_tokens,
        COUNT(*)                                           AS signal_count,
        COUNT(*) FILTER (WHERE net_signal > 0)             AS active_signal_count,
+       -- The subgraph's `Curator.realizedRewards` is marked "NOT IMPLEMENTED" in its own schema and no
+       -- curation or GNS handler writes it, so it has been 0 on the gateway path since the field was
+       -- added. Zero here is the same fact, stated rather than reproduced by accident.
+       CAST(0 AS HUGEINT)                                 AS realized_rewards,
        curator = '0xec9a7fb6cbc2e41926127929c2dce6e9c5d33bec' AS is_gns
 FROM positions GROUP BY 1;
 
