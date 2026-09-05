@@ -351,3 +351,37 @@ contract = "0x971B9d3d0Ae3ECa029CAB5eA1fB0F72c85e6a525"
 calldata = "0x6c080f18"
 every = 100000
 start = 75279040
+
+# Four governance parameters Lodestar's network page shows beside the aggregates, sampled the same way
+# as supply and issuance (nuthatch#1160). Each is a getter on a Horizon-era contract, so `start` is the
+# first Horizon block, 408,847,369; before it the getter does not exist and every row would be a revert.
+# Values on 2026-09-05: delegation ratio 16, curation tax 10,000 PPM (1%), protocol payment cut
+# 10,000 PPM (1%), max thawing period 2,419,200 s (28 days). The legacy `thawingPeriod`,
+# `maxAllocationEpochs` and `delegationTaxPercentage` getters revert on the Horizon proxy and are not
+# sampled: those parameters no longer exist, and the subgraph's values for them are frozen history.
+[[calls]]
+name = "delegation_ratio"
+contract = "0xb2bb92d0de618878e438b55d5846cfecd9301105"
+calldata = "0x1ebb7c30"
+every = 100000
+start = 408847369
+
+[[calls]]
+name = "curation_tax_percentage"
+contract = "0x22d78fb4bc72e191c765807f8891b5e1785c8014"
+calldata = "0xf115c427"
+every = 100000
+
+[[calls]]
+name = "protocol_payment_cut"
+contract = "0x7Aae8ae011927BC36Cb4d0d3e81f2E6E30daE06D"
+calldata = "0x1d526e50"
+every = 100000
+start = 408847369
+
+[[calls]]
+name = "max_thawing_period"
+contract = "0x00669a4cf01450b64e8a2a20e9b1fcb71e61ef03"
+calldata = "0x39514ad2"
+every = 100000
+start = 408847369
