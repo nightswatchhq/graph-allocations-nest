@@ -296,6 +296,46 @@ LEFT JOIN provisioned pr ON pr.sp = s.sp;
 -- lock, whose 28-day thaw expired long ago and which is withdrawable now - the pages compare this
 -- field to the clock, so a block number here would be wrong in a way that looks right.
 -- ---------------------------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------------------------
+-- The delegation pool per indexer: shares outstanding and tokens in it. Two columns, and they are
+-- the only two `lodestar_delegator_stakes` wanted from `lodestar_indexers` - a view that folds the
+-- whole ledger and returns forty. Measured on the production nest (2026-09-06): the full join costs
+-- 4.20 s, these two columns cost 2.31 s, and `lodestar_delegator_stakes` was over the per-permit
+-- DuckDB budget (244 MiB) computing the other thirty-eight to throw them away.
+--
+-- **The formula is the one `lodestar_indexers` uses, and it has to stay that way.** Both surfaces
+-- report a pool; if they drift, an indexer page and a delegator page disagree about the same number.
+-- `checks/pool-agrees.sql` fails if they ever differ - that check is the reason this duplication is
+-- allowed to exist rather than a second source of truth.
+-- ---------------------------------------------------------------------------------------------
+CREATE VIEW lodestar_indexer_pool AS
+WITH delegation AS (
+  SELECT sp, SUM(tok) AS delegated_net, SUM(sh) AS delegator_shares FROM (
+    SELECT LOWER(indexer) AS sp,             CAST(tokens AS HUGEINT) AS tok,  CAST(shares AS HUGEINT) AS sh FROM staking_legacy__stake_delegated
+    UNION ALL SELECT LOWER(indexer),        -CAST(tokens AS HUGEINT),        -CAST(shares AS HUGEINT)      FROM staking_legacy__stake_delegated_locked
+    UNION ALL SELECT LOWER("serviceProvider"),  CAST(tokens AS HUGEINT),      CAST(shares AS HUGEINT)      FROM staking__tokens_delegated
+    UNION ALL SELECT LOWER("serviceProvider"), -CAST(tokens AS HUGEINT),     -CAST(shares AS HUGEINT)      FROM staking__tokens_undelegated
+  ) GROUP BY 1
+),
+ledger AS (
+  SELECT indexer AS sp, SUM(pool_delta) FILTER (WHERE kind NOT IN ('delegated', 'undelegated')) AS pool_rewards_added
+  FROM lodestar_indexer_ledger GROUP BY 1
+),
+thawing AS (
+  SELECT sp, GREATEST(SUM(t), 0) AS delegated_thawing_tokens FROM (
+    SELECT LOWER("serviceProvider") AS sp,  CAST(tokens AS HUGEINT) AS t FROM staking__tokens_undelegated
+    UNION ALL SELECT LOWER("serviceProvider"), -CAST(tokens AS HUGEINT)  FROM staking__delegated_tokens_withdrawn
+    UNION ALL SELECT LOWER(indexer), 0                                    FROM staking_legacy__stake_delegated_locked
+  ) GROUP BY 1
+)
+SELECT d.sp                                                                                   AS id,
+       d.delegator_shares,
+       COALESCE(d.delegated_net, 0) + COALESCE(l.pool_rewards_added, 0)
+         + COALESCE(th.delegated_thawing_tokens, 0)                                           AS delegated_tokens
+FROM delegation d
+LEFT JOIN ledger  l  ON l.sp  = d.sp
+LEFT JOIN thawing th ON th.sp = d.sp;
+
 CREATE VIEW lodestar_delegator_stakes AS
 WITH events AS (
   SELECT LOWER(delegator) AS delegator, LOWER(indexer) AS indexer, 'in' AS kind, CAST(tokens AS HUGEINT) AS tok, CAST(shares AS HUGEINT) AS sh, CAST(block_timestamp AS BIGINT) AS ts, block_number * 100000 + log_index AS k FROM staking_legacy__stake_delegated
@@ -371,7 +411,7 @@ FROM exact x
 JOIN folded f ON f.delegator = x.delegator AND f.indexer = x.indexer
 LEFT JOIN withdrawn w ON w.delegator = x.delegator AND w.indexer = x.indexer
 LEFT JOIN thaw t ON t.delegator = x.delegator AND t.indexer = x.indexer
-LEFT JOIN lodestar_indexers i ON i.id = x.indexer;
+LEFT JOIN lodestar_indexer_pool i ON i.id = x.indexer;
 
 -- ---------------------------------------------------------------------------------------------
 -- Per delegator: the subgraph's `Delegator` totals, folded from the positions above so the two
