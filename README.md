@@ -37,9 +37,11 @@ first figure would make the backfill 256 times longer.
   one address collecting from itself, which the subgraph drops. Two further nest rows are `Thaw` and
   `CancelThaw`, types the subgraph's entity does not model at all. See
   nightswatchhq/nuthatch#1114.
-- **`lodestar_indexer_daily`** - one row per indexer per UTC day: indexing rewards split between the indexer and
-  its delegators, and query fees gross, to curators, to the protocol and net. Dated by the event that paid
-  them, not by allocation close, because Horizon collects on every POI. Lodestar's Daily Trends chart.
+- **`lodestar_indexer_deployment_daily`** / **`lodestar_indexer_daily`** - rewards and query fees per indexer,
+  deployment and UTC day, and the per-indexer sum. Rewards split between the indexer and its delegators; fees
+  taken apart as `GraphPayments` takes them, so `fees_net` is what the indexer received (checked against 1,990
+  `GraphPaymentCollected` receipts). Dated by the collection that paid, not by allocation close. Lodestar's P&L
+  and Daily Trends.
 - **`port_queue`** - deployments with net signal and no open allocation, ranked. No threshold applied;
   the caller filters (see below).
 - **`deployment_signal`** - net curation signal per deployment, with GRT paid in and curator count.
