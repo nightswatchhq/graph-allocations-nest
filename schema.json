@@ -1,5 +1,5 @@
 {
-  "registry_hash": "0xa93f8b09cc8d5f392ac78acc5aeb1061a5c279ec258afec5876732b9f618dac0",
+  "registry_hash": "0x916324e266cc65347b96cf6b4403a4f94452cbc60f1242d2efd9ce7f41f60449",
   "tables": [
     {
       "alias": "curation",
@@ -2196,6 +2196,68 @@
       "event": "RewardsDenied(address,address)",
       "table": "rewards__rewards_denied_9b13",
       "topic0": "0x9b1323a10f3955b1c9c054ffbda78edfdf49998aaf37f61d9f84776b59ac8043"
+    },
+    {
+      "alias": "rewards",
+      "columns": [
+        {
+          "indexed": false,
+          "name": "block_number",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "block_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "block_timestamp",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "tx_hash",
+          "sol_type": "implicit",
+          "storage": "bytes32"
+        },
+        {
+          "indexed": false,
+          "name": "log_index",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": false,
+          "name": "address",
+          "sol_type": "implicit",
+          "storage": "address"
+        },
+        {
+          "indexed": false,
+          "name": "_seq",
+          "sol_type": "implicit",
+          "storage": "u64"
+        },
+        {
+          "indexed": true,
+          "name": "subgraphDeploymentID",
+          "sol_type": "bytes32",
+          "storage": "fixed_bytes"
+        },
+        {
+          "indexed": false,
+          "name": "sinceBlock",
+          "sol_type": "uint256",
+          "storage": "word32"
+        }
+      ],
+      "event": "RewardsDenylistUpdated(bytes32,uint256)",
+      "table": "rewards__rewards_denylist_updated",
+      "topic0": "0xe016102b339c3889f4967b491f3381f2c352c8fe3d4f880007807d45b124065a"
     },
     {
       "alias": "service_registry",
