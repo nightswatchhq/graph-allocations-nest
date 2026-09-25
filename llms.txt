@@ -47,6 +47,7 @@ A self-hosted blockchain index. Query it locally; there is no third-party API.
 - `rewards__rewards_assigned` - RewardsAssigned(address,address,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationID, epoch, amount)
 - `rewards__rewards_denied_07b6` - RewardsDenied(address,address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationID, epoch)
 - `rewards__rewards_denied_9b13` - RewardsDenied(address,address) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationID)
+- `rewards__rewards_denylist_updated` - RewardsDenylistUpdated(bytes32,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, subgraphDeploymentID, sinceBlock)
 - `service_registry__service_registered` - ServiceRegistered(address,string,string) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, url, geohash)
 - `service_registry__service_unregistered` - ServiceUnregistered(address) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer)
 - `staking__delegated_tokens_withdrawn` - DelegatedTokensWithdrawn(address,address,address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, serviceProvider, verifier, delegator, tokens)

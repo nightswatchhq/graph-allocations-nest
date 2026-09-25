@@ -266,6 +266,7 @@ events = [
     "RewardsAssigned",
     "HorizonRewardsAssigned",
     "RewardsDenied",
+    "RewardsDenylistUpdated",
     "ParameterUpdated",
 ]
 
