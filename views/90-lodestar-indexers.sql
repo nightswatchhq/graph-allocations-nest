@@ -245,14 +245,16 @@ registry AS (
       -- Horizon indexers register with the SubgraphService, whose event carries abi.encode(string url,
       -- string geohash, address rewardsDestination) as `data`: three head words, then each string as a
       -- length word and padded bytes. 14 of 184 indexers had no legacy registration and read url null.
-      UNION ALL SELECT sp, url, geohash, block_number, log_index FROM (
+      -- `geohash` is read from the same row one level up, where a LATERAL used to reach back for it.
+      UNION ALL SELECT sp, url, decode(from_hex(substr(h, 257 + ((ulen + 31) // 32) * 64 + 64, glen * 2))) AS geohash,
+                       block_number, log_index FROM (
         SELECT sp, block_number, log_index, ulen, h,
                decode(from_hex(substr(h, 257, ulen * 2))) AS url,
                CAST(('0x' || substr(h, 257 + ((ulen + 31) // 32) * 64, 64)) AS BIGINT) AS glen
         FROM (SELECT "serviceProvider" AS sp, block_number, log_index, substr(data, 3) AS h,
                      CAST(('0x' || substr(substr(data, 3), 193, 64)) AS BIGINT) AS ulen
               FROM subgraph_service__service_provider_registered)
-      ) x, LATERAL (SELECT decode(from_hex(substr(x.h, 257 + ((x.ulen + 31) // 32) * 64 + 64, x.glen * 2))) AS geohash) g
+      ) x
     )
   ) WHERE rn = 1
 ),

@@ -123,11 +123,11 @@ allocated AS (
   SELECT SUM(allocated_tokens) AS total FROM lodestar_allocations WHERE status = 'Active'
 ),
 subgraphs AS (
-  SELECT COUNT(DISTINCT "subgraphID") AS n_all,
-         COUNT(DISTINCT "subgraphID") FILTER (
-           WHERE "subgraphID" NOT IN (SELECT "subgraphID" FROM gns__subgraph_deprecated)
-         ) AS n_active
-  FROM gns__subgraph_published
+  -- The active count as its own query rather than an aggregate FILTER holding a subquery, which not
+  -- every engine plans; the `NOT IN` keeps its meaning (a NULL deprecated id counts none as active).
+  SELECT (SELECT COUNT(DISTINCT "subgraphID") FROM gns__subgraph_published) AS n_all,
+         (SELECT COUNT(DISTINCT "subgraphID") FROM gns__subgraph_published
+          WHERE "subgraphID" NOT IN (SELECT "subgraphID" FROM gns__subgraph_deprecated)) AS n_active
 ),
 -- The newest pinned reads. `reverted` would mean the call failed at that block, which is a fact about
 -- chain state rather than a zero, so it is excluded rather than counted as none. `issuance_per_block`
