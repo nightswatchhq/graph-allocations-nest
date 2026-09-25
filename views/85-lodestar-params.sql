@@ -41,41 +41,12 @@ WITH samples AS (
   ) WHERE rn = 1
 ),
 dec AS (
-  -- The 32 hex characters folded base-16 into a HUGEINT: the sum `list_reduce(..., acc * 16 + d)`
-  -- computes, written out, so an engine without DuckDB's list lambdas reads the same number.
+  -- The 32 hex characters as a HUGEINT, the number `list_reduce(..., acc * 16 + d)` folds them to,
+  -- read as two 64-bit halves (DuckDB casts `0x` text to UBIGINT, not HUGEINT), so an engine without
+  -- DuckDB's list comprehensions reads the same number. A top half from 2^63 overflows, as the fold did.
   SELECT name,
-         CAST(strpos('0123456789abcdef', substr(h, 1, 1)) - 1 AS HUGEINT) * CAST('21267647932558653966460912964485513216' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 2, 1)) - 1 AS HUGEINT) * CAST('1329227995784915872903807060280344576' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 3, 1)) - 1 AS HUGEINT) * CAST('83076749736557242056487941267521536' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 4, 1)) - 1 AS HUGEINT) * CAST('5192296858534827628530496329220096' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 5, 1)) - 1 AS HUGEINT) * CAST('324518553658426726783156020576256' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 6, 1)) - 1 AS HUGEINT) * CAST('20282409603651670423947251286016' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 7, 1)) - 1 AS HUGEINT) * CAST('1267650600228229401496703205376' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 8, 1)) - 1 AS HUGEINT) * CAST('79228162514264337593543950336' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 9, 1)) - 1 AS HUGEINT) * CAST('4951760157141521099596496896' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 10, 1)) - 1 AS HUGEINT) * CAST('309485009821345068724781056' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 11, 1)) - 1 AS HUGEINT) * CAST('19342813113834066795298816' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 12, 1)) - 1 AS HUGEINT) * CAST('1208925819614629174706176' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 13, 1)) - 1 AS HUGEINT) * CAST('75557863725914323419136' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 14, 1)) - 1 AS HUGEINT) * CAST('4722366482869645213696' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 15, 1)) - 1 AS HUGEINT) * CAST('295147905179352825856' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 16, 1)) - 1 AS HUGEINT) * CAST('18446744073709551616' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 17, 1)) - 1 AS HUGEINT) * CAST('1152921504606846976' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 18, 1)) - 1 AS HUGEINT) * CAST('72057594037927936' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 19, 1)) - 1 AS HUGEINT) * CAST('4503599627370496' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 20, 1)) - 1 AS HUGEINT) * CAST('281474976710656' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 21, 1)) - 1 AS HUGEINT) * CAST('17592186044416' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 22, 1)) - 1 AS HUGEINT) * CAST('1099511627776' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 23, 1)) - 1 AS HUGEINT) * CAST('68719476736' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 24, 1)) - 1 AS HUGEINT) * CAST('4294967296' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 25, 1)) - 1 AS HUGEINT) * CAST('268435456' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 26, 1)) - 1 AS HUGEINT) * CAST('16777216' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 27, 1)) - 1 AS HUGEINT) * CAST('1048576' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 28, 1)) - 1 AS HUGEINT) * CAST('65536' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 29, 1)) - 1 AS HUGEINT) * CAST('4096' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 30, 1)) - 1 AS HUGEINT) * CAST('256' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 31, 1)) - 1 AS HUGEINT) * CAST('16' AS HUGEINT) +
-         CAST(strpos('0123456789abcdef', substr(h, 32, 1)) - 1 AS HUGEINT) * CAST('1' AS HUGEINT) AS value,
+         CAST(CAST('0x' || substr(h, 1, 16) AS UBIGINT) AS HUGEINT) * CAST('18446744073709551616' AS HUGEINT)
+           + CAST(CAST('0x' || substr(h, 17, 16) AS UBIGINT) AS HUGEINT) AS value,
          block_number
   FROM samples
 ),
