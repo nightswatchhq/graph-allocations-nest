@@ -336,7 +336,7 @@ FROM delegation d
 LEFT JOIN ledger  l  ON l.sp  = d.sp
 LEFT JOIN thawing th ON th.sp = d.sp;
 
-CREATE VIEW lodestar_delegator_stakes AS
+CREATE VIEW lodestar_delegator_positions AS
 WITH events AS (
   SELECT LOWER(delegator) AS delegator, LOWER(indexer) AS indexer, 'in' AS kind, CAST(tokens AS HUGEINT) AS tok, CAST(shares AS HUGEINT) AS sh, CAST(block_timestamp AS BIGINT) AS ts, block_number * 100000 + log_index AS k FROM staking_legacy__stake_delegated
   UNION ALL SELECT LOWER(delegator), LOWER(indexer),            'out', CAST(tokens AS HUGEINT), CAST(shares AS HUGEINT), CAST(block_timestamp AS BIGINT), block_number * 100000 + log_index FROM staking_legacy__stake_delegated_locked
@@ -390,14 +390,6 @@ SELECT x.delegator || '-' || x.indexer                        AS id,
        x.delegator,
        x.indexer,
        x.share_amount,
-       -- shares * pool_tokens / pool_shares, the contract's uint256 formula. Two wei-scale HUGEINTs
-       -- multiplied overflow INT128 (a 15,572 GRT position in a 1.04M GRT pool did, on real data), so
-       -- the whole-share part stays exact and only the fractional remainder goes through DOUBLE,
-       -- which is within one part in 1e16 of the contract's answer.
-       CASE WHEN i.delegator_shares > 0
-            THEN (x.share_amount // i.delegator_shares) * i.delegated_tokens
-                 + CAST(CAST(x.share_amount % i.delegator_shares AS DOUBLE) * CAST(i.delegated_tokens AS DOUBLE) / CAST(i.delegator_shares AS DOUBLE) AS HUGEINT)
-            ELSE 0 END                                         AS staked_tokens,
        x.total_delegated_tokens,
        x.total_undelegated_tokens,
        f.st.rate                                               AS personal_exchange_rate,
@@ -410,13 +402,46 @@ SELECT x.delegator || '-' || x.indexer                        AS id,
 FROM exact x
 JOIN folded f ON f.delegator = x.delegator AND f.indexer = x.indexer
 LEFT JOIN withdrawn w ON w.delegator = x.delegator AND w.indexer = x.indexer
-LEFT JOIN thaw t ON t.delegator = x.delegator AND t.indexer = x.indexer
-LEFT JOIN lodestar_indexer_pool i ON i.id = x.indexer;
+LEFT JOIN thaw t ON t.delegator = x.delegator AND t.indexer = x.indexer;
+
+-- ---------------------------------------------------------------------------------------------
+-- The positions with the pool attached: `staked_tokens` is what the shares are worth today. Kept
+-- apart from `lodestar_delegator_positions` because the join to `lodestar_indexer_pool` cannot be
+-- filtered by delegator - DuckDB pushes nothing into the right side of a LEFT JOIN - so every reader
+-- of this view pays the whole pool fold (4.8 s on 2026-09-26) even for one delegator. A reader that
+-- does not need `staked_tokens`, or that already holds the pool figures, reads the positions view
+-- (0.14 s for one delegator) and does the arithmetic below itself.
+-- ---------------------------------------------------------------------------------------------
+CREATE VIEW lodestar_delegator_stakes AS
+SELECT p.id,
+       p.delegator,
+       p.indexer,
+       p.share_amount,
+       -- shares * pool_tokens / pool_shares, the contract's uint256 formula. Two wei-scale HUGEINTs
+       -- multiplied overflow INT128 (a 15,572 GRT position in a 1.04M GRT pool did, on real data), so
+       -- the whole-share part stays exact and only the fractional remainder goes through DOUBLE,
+       -- which is within one part in 1e16 of the contract's answer.
+       CASE WHEN i.delegator_shares > 0
+            THEN (p.share_amount // i.delegator_shares) * i.delegated_tokens
+                 + CAST(CAST(p.share_amount % i.delegator_shares AS DOUBLE) * CAST(i.delegated_tokens AS DOUBLE) / CAST(i.delegator_shares AS DOUBLE) AS HUGEINT)
+            ELSE 0 END                                         AS staked_tokens,
+       p.total_delegated_tokens,
+       p.total_undelegated_tokens,
+       p.personal_exchange_rate,
+       p.realized_rewards,
+       p.locked_tokens,
+       p.locked_until,
+       p.active,
+       p.created_at,
+       p.last_undelegated_at
+FROM lodestar_delegator_positions p
+LEFT JOIN lodestar_indexer_pool i ON i.id = p.indexer;
 
 -- ---------------------------------------------------------------------------------------------
 -- Per delegator: the subgraph's `Delegator` totals, folded from the positions above so the two
 -- surfaces cannot disagree. `stakes_count` counts positions ever opened; `active_stakes_count`
--- those with shares left, the subgraph's rule.
+-- those with shares left, the subgraph's rule. Over the positions, not the stakes: none of these
+-- totals needs the pool, and the pool join would cost every delegator lookup the whole fold.
 -- ---------------------------------------------------------------------------------------------
 CREATE VIEW lodestar_delegators AS
 SELECT delegator                                  AS id,
@@ -425,7 +450,7 @@ SELECT delegator                                  AS id,
        SUM(realized_rewards)                      AS total_realized_rewards,
        COUNT(*)                                   AS stakes_count,
        COUNT(*) FILTER (WHERE active)             AS active_stakes_count
-FROM lodestar_delegator_stakes GROUP BY 1;
+FROM lodestar_delegator_positions GROUP BY 1;
 
 -- ---------------------------------------------------------------------------------------------
 -- Per (curator, deployment): the subgraph's `Signal`, for the curator portfolio. Curation-level
