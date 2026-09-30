@@ -21,8 +21,8 @@ first figure would make the backfill 256 times longer.
 
 - **`lodestar_allocations`** - the `SubgraphAllocation` shape Lodestar's `ingest-allocations` route
   wants (RFC-0011), served from events rather than the gateway. **Verified against the network
-  subgraph: 13,301 active allocations on both sides, exact.** 245,372 allocations total, 232,505
-  carrying a POI.
+  subgraph at block 510,395,917: the same 14,415 active allocations, matched by allocation ID**
+  ([verification/2026-09-30](verification/2026-09-30/README.md), with the commands to rerun it).
 - **`lodestar_epochs`** / **`epoch_boundaries`** - per-epoch rewards, fees and signal. Max epoch
   **1,356, matching the network subgraph exactly**. Boundaries are *observed* from the `currentEpoch`
   the events themselves carry, not computed - see the header of `views/50-lodestar-epochs.sql` for
@@ -114,7 +114,8 @@ decoration. `checks/` pins these numbers, so `nuthatch check` fails loudly if th
 - **`LegacyAllocationMigrated` has fired zero times.** The event exists in the ABI and has never been
   emitted, so the pre-Horizon migration path is invisible here. "No open allocation on
   `SubgraphService`" equals "unserved" only if every live allocation now lives on `SubgraphService`.
-  13,306 open allocations is a plausible network-wide figure, which supports that, but it is inference.
+  Every legacy staking allocation is closed (591,071 created, 591,071 closed), so that condition
+  holds; see [verification/2026-09-30](verification/2026-09-30/README.md).
 - **A single curator is not demand.** `port_queue` carries a `curators` count for a reason - much of
   the top of the list is one address, and a repeating 10,000 GRT / 9,900 signal shape runs through the
   middle, which is programmatic rather than anybody deciding a dataset matters. Read before believing.
