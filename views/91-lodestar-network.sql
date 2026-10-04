@@ -123,11 +123,11 @@ allocated AS (
   SELECT SUM(allocated_tokens) AS total FROM lodestar_allocations WHERE status = 'Active'
 ),
 subgraphs AS (
-  SELECT COUNT(DISTINCT "subgraphID") AS n_all,
-         COUNT(DISTINCT "subgraphID") FILTER (
-           WHERE "subgraphID" NOT IN (SELECT "subgraphID" FROM gns__subgraph_deprecated)
-         ) AS n_active
-  FROM gns__subgraph_published
+  -- The active count as its own query rather than an aggregate FILTER holding a subquery, which not
+  -- every engine plans; the `NOT IN` keeps its meaning (a NULL deprecated id counts none as active).
+  SELECT (SELECT COUNT(DISTINCT "subgraphID") FROM gns__subgraph_published) AS n_all,
+         (SELECT COUNT(DISTINCT "subgraphID") FROM gns__subgraph_published
+          WHERE "subgraphID" NOT IN (SELECT "subgraphID" FROM gns__subgraph_deprecated)) AS n_active
 ),
 -- The newest pinned reads. `reverted` would mean the call failed at that block, which is a fact about
 -- chain state rather than a zero, so it is excluded rather than counted as none. `issuance_per_block`
@@ -140,25 +140,83 @@ subgraphs AS (
 -- token whose supply is 3.5e27. The `_raw` column stays as it was, because it is what a caller
 -- checks the decode against.
 supply AS (
-  SELECT CAST(result AS VARCHAR) AS raw,
-         list_reduce(
-           [CAST(strpos('0123456789abcdef', c) - 1 AS HUGEINT)
-            FOR c IN string_split(substr(lower(CAST(result AS VARCHAR)), -32), '')],
-           lambda acc, d: acc * 16 + d
-         ) AS value,
+  -- `list_reduce(..., acc * 16 + d)` written out as the sum it computes, so an engine without
+  -- DuckDB's list lambdas reads the same number (the same fold as `lodestar_network_params`).
+  SELECT raw,
+         CAST(strpos('0123456789abcdef', substr(h, 1, 1)) - 1 AS HUGEINT) * CAST('21267647932558653966460912964485513216' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 2, 1)) - 1 AS HUGEINT) * CAST('1329227995784915872903807060280344576' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 3, 1)) - 1 AS HUGEINT) * CAST('83076749736557242056487941267521536' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 4, 1)) - 1 AS HUGEINT) * CAST('5192296858534827628530496329220096' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 5, 1)) - 1 AS HUGEINT) * CAST('324518553658426726783156020576256' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 6, 1)) - 1 AS HUGEINT) * CAST('20282409603651670423947251286016' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 7, 1)) - 1 AS HUGEINT) * CAST('1267650600228229401496703205376' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 8, 1)) - 1 AS HUGEINT) * CAST('79228162514264337593543950336' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 9, 1)) - 1 AS HUGEINT) * CAST('4951760157141521099596496896' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 10, 1)) - 1 AS HUGEINT) * CAST('309485009821345068724781056' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 11, 1)) - 1 AS HUGEINT) * CAST('19342813113834066795298816' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 12, 1)) - 1 AS HUGEINT) * CAST('1208925819614629174706176' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 13, 1)) - 1 AS HUGEINT) * CAST('75557863725914323419136' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 14, 1)) - 1 AS HUGEINT) * CAST('4722366482869645213696' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 15, 1)) - 1 AS HUGEINT) * CAST('295147905179352825856' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 16, 1)) - 1 AS HUGEINT) * CAST('18446744073709551616' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 17, 1)) - 1 AS HUGEINT) * CAST('1152921504606846976' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 18, 1)) - 1 AS HUGEINT) * CAST('72057594037927936' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 19, 1)) - 1 AS HUGEINT) * CAST('4503599627370496' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 20, 1)) - 1 AS HUGEINT) * CAST('281474976710656' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 21, 1)) - 1 AS HUGEINT) * CAST('17592186044416' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 22, 1)) - 1 AS HUGEINT) * CAST('1099511627776' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 23, 1)) - 1 AS HUGEINT) * CAST('68719476736' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 24, 1)) - 1 AS HUGEINT) * CAST('4294967296' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 25, 1)) - 1 AS HUGEINT) * CAST('268435456' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 26, 1)) - 1 AS HUGEINT) * CAST('16777216' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 27, 1)) - 1 AS HUGEINT) * CAST('1048576' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 28, 1)) - 1 AS HUGEINT) * CAST('65536' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 29, 1)) - 1 AS HUGEINT) * CAST('4096' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 30, 1)) - 1 AS HUGEINT) * CAST('256' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 31, 1)) - 1 AS HUGEINT) * CAST('16' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 32, 1)) - 1 AS HUGEINT) * CAST('1' AS HUGEINT) AS value,
          block_number
-  FROM total_supply WHERE reverted = false
-  ORDER BY block_number DESC LIMIT 1
+  FROM (SELECT CAST(result AS VARCHAR) AS raw, right(lower(CAST(result AS VARCHAR)), 32) AS h, block_number
+        FROM total_supply WHERE reverted = false
+        ORDER BY block_number DESC LIMIT 1)
 ),
 issuance AS (
-  SELECT list_reduce(
-           [CAST(strpos('0123456789abcdef', c) - 1 AS HUGEINT)
-            FOR c IN string_split(substr(lower(CAST(result AS VARCHAR)), -32), '')],
-           lambda acc, d: acc * 16 + d
-         ) AS value,
+  SELECT CAST(strpos('0123456789abcdef', substr(h, 1, 1)) - 1 AS HUGEINT) * CAST('21267647932558653966460912964485513216' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 2, 1)) - 1 AS HUGEINT) * CAST('1329227995784915872903807060280344576' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 3, 1)) - 1 AS HUGEINT) * CAST('83076749736557242056487941267521536' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 4, 1)) - 1 AS HUGEINT) * CAST('5192296858534827628530496329220096' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 5, 1)) - 1 AS HUGEINT) * CAST('324518553658426726783156020576256' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 6, 1)) - 1 AS HUGEINT) * CAST('20282409603651670423947251286016' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 7, 1)) - 1 AS HUGEINT) * CAST('1267650600228229401496703205376' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 8, 1)) - 1 AS HUGEINT) * CAST('79228162514264337593543950336' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 9, 1)) - 1 AS HUGEINT) * CAST('4951760157141521099596496896' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 10, 1)) - 1 AS HUGEINT) * CAST('309485009821345068724781056' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 11, 1)) - 1 AS HUGEINT) * CAST('19342813113834066795298816' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 12, 1)) - 1 AS HUGEINT) * CAST('1208925819614629174706176' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 13, 1)) - 1 AS HUGEINT) * CAST('75557863725914323419136' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 14, 1)) - 1 AS HUGEINT) * CAST('4722366482869645213696' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 15, 1)) - 1 AS HUGEINT) * CAST('295147905179352825856' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 16, 1)) - 1 AS HUGEINT) * CAST('18446744073709551616' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 17, 1)) - 1 AS HUGEINT) * CAST('1152921504606846976' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 18, 1)) - 1 AS HUGEINT) * CAST('72057594037927936' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 19, 1)) - 1 AS HUGEINT) * CAST('4503599627370496' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 20, 1)) - 1 AS HUGEINT) * CAST('281474976710656' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 21, 1)) - 1 AS HUGEINT) * CAST('17592186044416' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 22, 1)) - 1 AS HUGEINT) * CAST('1099511627776' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 23, 1)) - 1 AS HUGEINT) * CAST('68719476736' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 24, 1)) - 1 AS HUGEINT) * CAST('4294967296' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 25, 1)) - 1 AS HUGEINT) * CAST('268435456' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 26, 1)) - 1 AS HUGEINT) * CAST('16777216' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 27, 1)) - 1 AS HUGEINT) * CAST('1048576' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 28, 1)) - 1 AS HUGEINT) * CAST('65536' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 29, 1)) - 1 AS HUGEINT) * CAST('4096' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 30, 1)) - 1 AS HUGEINT) * CAST('256' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 31, 1)) - 1 AS HUGEINT) * CAST('16' AS HUGEINT) +
+         CAST(strpos('0123456789abcdef', substr(h, 32, 1)) - 1 AS HUGEINT) * CAST('1' AS HUGEINT) AS value,
          block_number
-  FROM issuance_per_block WHERE reverted = false
-  ORDER BY block_number DESC LIMIT 1
+  FROM (SELECT right(lower(CAST(result AS VARCHAR)), 32) AS h, block_number
+        FROM issuance_per_block WHERE reverted = false
+        ORDER BY block_number DESC LIMIT 1)
 ),
 -- Bridge flow, and it is *not* the subgraph's `totalGRTMinted` / `totalGRTBurned`. Those count every
 -- mint and burn, including the indexing rewards minted as a `Transfer` from the zero address; this

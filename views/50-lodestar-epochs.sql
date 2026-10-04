@@ -404,11 +404,27 @@ legacy_shares AS (
   )
 ),
 legacy_rewards AS (
+  -- Each reward with the delegation parameters and pool shares in force at it: the newest
+  -- `legacy_cuts` and `legacy_shares` rows at or before its key. That is an `ASOF LEFT JOIN`, which
+  -- only DuckDB spells; here the newest key of each is carried forward over the three streams in key
+  -- order (a change at the same key as a reward sorts first and applies, as `>=` did), and the reward
+  -- then joins each on that exact key. `k` is unique per event, so the join adds no rows.
   SELECT r.epoch, r.amount,
          CASE WHEN c.cut IS NOT NULL AND COALESCE(ps.cum_shares, 0) > 0 THEN r.amount - r.amount * c.cut // 1000000 ELSE 0 END AS delegator_share
-  FROM (SELECT LOWER(indexer) AS sp, CAST(epoch AS HUGEINT) AS epoch, CAST(amount AS HUGEINT) AS amount, block_number * 100000 + log_index AS k FROM rewards__rewards_assigned) r
-  ASOF LEFT JOIN legacy_cuts c ON r.sp = c.sp AND r.k >= c.k
-  ASOF LEFT JOIN legacy_shares ps ON r.sp = ps.sp AND r.k >= ps.k
+  FROM (
+    SELECT sp, epoch, amount, ck, pk FROM (
+      SELECT sp, epoch, amount, src,
+             MAX(CASE WHEN src = 0 THEN k END) OVER (PARTITION BY sp ORDER BY k, src ROWS UNBOUNDED PRECEDING) AS ck,
+             MAX(CASE WHEN src = 1 THEN k END) OVER (PARTITION BY sp ORDER BY k, src ROWS UNBOUNDED PRECEDING) AS pk
+      FROM (
+        SELECT sp, k, 0 AS src, CAST(NULL AS HUGEINT) AS epoch, CAST(NULL AS HUGEINT) AS amount FROM legacy_cuts
+        UNION ALL SELECT sp, k, 1, NULL, NULL FROM legacy_shares
+        UNION ALL SELECT LOWER(indexer), block_number * 100000 + log_index, 2, CAST(epoch AS HUGEINT), CAST(amount AS HUGEINT) FROM rewards__rewards_assigned
+      )
+    ) WHERE src = 2
+  ) r
+  LEFT JOIN legacy_cuts c ON c.sp = r.sp AND c.k = r.ck
+  LEFT JOIN legacy_shares ps ON ps.sp = r.sp AND ps.k = r.pk
 ),
 rewards AS (
   SELECT epoch, SUM(total) AS total_rewards, SUM(indexer) AS total_indexer_rewards, SUM(delegator) AS total_delegator_rewards FROM (
