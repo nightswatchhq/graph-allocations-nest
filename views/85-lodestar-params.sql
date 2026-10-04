@@ -14,43 +14,41 @@
 -- half, and these are the burn halves that remain: the protocol's cut of query fees (1%, burned)
 -- and the curation tax (1% of every signal, burned).
 CREATE VIEW lodestar_network_params AS
-WITH dec AS (
-  -- newest non-reverted sample per parameter, decoded
-  SELECT name, value, block_number FROM (
-    SELECT 'delegation_ratio' AS name,
-           list_reduce([CAST(strpos('0123456789abcdef', c) - 1 AS HUGEINT)
-                        FOR c IN string_split(substr(lower(CAST(result AS VARCHAR)), -32), '')],
-                       lambda acc, d: acc * 16 + d) AS value,
+WITH samples AS (
+  -- newest non-reverted sample per parameter: the last 32 hex characters of its return word
+  SELECT name, h, block_number FROM (
+    SELECT 'delegation_ratio' AS name, right(lower(CAST(result AS VARCHAR)), 32) AS h,
            block_number, ROW_NUMBER() OVER (ORDER BY block_number DESC) AS rn
     FROM delegation_ratio WHERE reverted = false
   ) WHERE rn = 1
   UNION ALL
-  SELECT name, value, block_number FROM (
-    SELECT 'curation_tax_percentage' AS name,
-           list_reduce([CAST(strpos('0123456789abcdef', c) - 1 AS HUGEINT)
-                        FOR c IN string_split(substr(lower(CAST(result AS VARCHAR)), -32), '')],
-                       lambda acc, d: acc * 16 + d) AS value,
+  SELECT name, h, block_number FROM (
+    SELECT 'curation_tax_percentage' AS name, right(lower(CAST(result AS VARCHAR)), 32) AS h,
            block_number, ROW_NUMBER() OVER (ORDER BY block_number DESC) AS rn
     FROM curation_tax_percentage WHERE reverted = false
   ) WHERE rn = 1
   UNION ALL
-  SELECT name, value, block_number FROM (
-    SELECT 'protocol_payment_cut' AS name,
-           list_reduce([CAST(strpos('0123456789abcdef', c) - 1 AS HUGEINT)
-                        FOR c IN string_split(substr(lower(CAST(result AS VARCHAR)), -32), '')],
-                       lambda acc, d: acc * 16 + d) AS value,
+  SELECT name, h, block_number FROM (
+    SELECT 'protocol_payment_cut' AS name, right(lower(CAST(result AS VARCHAR)), 32) AS h,
            block_number, ROW_NUMBER() OVER (ORDER BY block_number DESC) AS rn
     FROM protocol_payment_cut WHERE reverted = false
   ) WHERE rn = 1
   UNION ALL
-  SELECT name, value, block_number FROM (
-    SELECT 'max_thawing_period' AS name,
-           list_reduce([CAST(strpos('0123456789abcdef', c) - 1 AS HUGEINT)
-                        FOR c IN string_split(substr(lower(CAST(result AS VARCHAR)), -32), '')],
-                       lambda acc, d: acc * 16 + d) AS value,
+  SELECT name, h, block_number FROM (
+    SELECT 'max_thawing_period' AS name, right(lower(CAST(result AS VARCHAR)), 32) AS h,
            block_number, ROW_NUMBER() OVER (ORDER BY block_number DESC) AS rn
     FROM max_thawing_period WHERE reverted = false
   ) WHERE rn = 1
+),
+dec AS (
+  -- The 32 hex characters as a HUGEINT, the number `list_reduce(..., acc * 16 + d)` folds them to,
+  -- read as two 64-bit halves (DuckDB casts `0x` text to UBIGINT, not HUGEINT), so an engine without
+  -- DuckDB's list comprehensions reads the same number. A top half from 2^63 overflows, as the fold did.
+  SELECT name,
+         CAST(CAST('0x' || substr(h, 1, 16) AS UBIGINT) AS HUGEINT) * CAST('18446744073709551616' AS HUGEINT)
+           + CAST(CAST('0x' || substr(h, 17, 16) AS UBIGINT) AS HUGEINT) AS value,
+         block_number
+  FROM samples
 ),
 epoch_len AS (
   SELECT CAST("epochLength" AS HUGEINT) AS epoch_length, CAST(epoch AS HUGEINT) AS last_length_update_epoch,

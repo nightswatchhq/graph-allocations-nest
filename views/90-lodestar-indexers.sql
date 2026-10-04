@@ -40,20 +40,47 @@ pool_shares_series AS (
 ),
 cuts AS (SELECT LOWER(indexer) AS sp, CAST("indexingRewardCut" AS HUGEINT) AS cut, block_number * 100000 + log_index AS k FROM staking_legacy__delegation_parameters_updated),
 legacy_reward_share AS (
+  -- The cut and the pool shares in force at each reward: the newest `cuts` and `pool_shares_series`
+  -- rows at or before its key. That was `ASOF JOIN` (a reward before any cut drops, as the inner
+  -- join did) and `ASOF LEFT JOIN`, which only DuckDB spells; here each newest key is carried
+  -- forward over the three streams in key order, a change at the reward's own key sorting first as
+  -- `>=` had it, and the reward joins on that exact key. `k` is unique per event.
   SELECT r.sp, r.ts, r.bn, r.k, r.amount - r.amount * c.cut // 1000000 AS t
-  FROM (SELECT LOWER(indexer) AS sp, CAST(amount AS HUGEINT) AS amount, CAST(block_timestamp AS BIGINT) AS ts, block_number AS bn, block_number * 100000 + log_index AS k FROM rewards__rewards_assigned) r
-  ASOF JOIN cuts c ON r.sp = c.sp AND r.k >= c.k
-  ASOF LEFT JOIN pool_shares_series ps ON r.sp = ps.sp AND r.k >= ps.k
+  FROM (
+    SELECT sp, k, amount, ts, bn, ck, pk FROM (
+      SELECT sp, k, amount, ts, bn, src,
+             MAX(CASE WHEN src = 0 THEN k END) OVER (PARTITION BY sp ORDER BY k, src ROWS UNBOUNDED PRECEDING) AS ck,
+             MAX(CASE WHEN src = 1 THEN k END) OVER (PARTITION BY sp ORDER BY k, src ROWS UNBOUNDED PRECEDING) AS pk
+      FROM (
+        SELECT sp, k, 0 AS src, CAST(NULL AS HUGEINT) AS amount, CAST(NULL AS BIGINT) AS ts, CAST(NULL AS UBIGINT) AS bn FROM cuts
+        UNION ALL SELECT sp, k, 1, CAST(NULL AS HUGEINT), CAST(NULL AS BIGINT), CAST(NULL AS UBIGINT) FROM pool_shares_series
+        UNION ALL SELECT LOWER(indexer), block_number * 100000 + log_index, 2, CAST(amount AS HUGEINT), CAST(block_timestamp AS BIGINT), block_number FROM rewards__rewards_assigned
+      )
+    ) WHERE src = 2
+  ) r
+  JOIN cuts c ON c.sp = r.sp AND c.k = r.ck
+  LEFT JOIN pool_shares_series ps ON ps.sp = r.sp AND ps.k = r.pk
   WHERE r.bn < COALESCE((SELECT bn FROM horizon_start), 9223372036854775807) AND COALESCE(ps.cum_shares, 0) > 0
 ),
 legacy_path_share AS (
+  -- As `legacy_reward_share`, for rewards on the Horizon path to legacy allocations.
   SELECT h.sp, h.ts, h.bn, h.k, h.amount - h.amount * c.cut // 1000000 AS t
-  FROM (SELECT LOWER(indexer) AS sp, LOWER("allocationID") AS a, CAST(amount AS HUGEINT) AS amount, CAST(block_timestamp AS BIGINT) AS ts, block_number AS bn, block_number * 100000 + log_index AS k FROM rewards__horizon_rewards_assigned) h
-  ASOF JOIN cuts c ON h.sp = c.sp AND h.k >= c.k
-  ASOF LEFT JOIN pool_shares_series ps ON h.sp = ps.sp AND h.k >= ps.k
+  FROM (
+    SELECT sp, k, a, amount, ts, bn, ck, pk FROM (
+      SELECT sp, k, a, amount, ts, bn, src,
+             MAX(CASE WHEN src = 0 THEN k END) OVER (PARTITION BY sp ORDER BY k, src ROWS UNBOUNDED PRECEDING) AS ck,
+             MAX(CASE WHEN src = 1 THEN k END) OVER (PARTITION BY sp ORDER BY k, src ROWS UNBOUNDED PRECEDING) AS pk
+      FROM (
+        SELECT sp, k, 0 AS src, CAST(NULL AS VARCHAR) AS a, CAST(NULL AS HUGEINT) AS amount, CAST(NULL AS BIGINT) AS ts, CAST(NULL AS UBIGINT) AS bn FROM cuts
+        UNION ALL SELECT sp, k, 1, CAST(NULL AS VARCHAR), CAST(NULL AS HUGEINT), CAST(NULL AS BIGINT), CAST(NULL AS UBIGINT) FROM pool_shares_series
+        UNION ALL SELECT LOWER(indexer), block_number * 100000 + log_index, 2, LOWER("allocationID"), CAST(amount AS HUGEINT), CAST(block_timestamp AS BIGINT), block_number FROM rewards__horizon_rewards_assigned
+      )
+    ) WHERE src = 2
+  ) h
+  JOIN cuts c ON c.sp = h.sp AND c.k = h.ck
+  LEFT JOIN pool_shares_series ps ON ps.sp = h.sp AND ps.k = h.pk
   WHERE h.a IN (SELECT LOWER("allocationID") FROM staking_legacy__allocation_created) AND COALESCE(ps.cum_shares, 0) > 0
 )
--- own stake
 SELECT LOWER(indexer) AS indexer, CAST(block_timestamp AS BIGINT) AS ts, block_number, block_number * 100000 + log_index AS k, 'stake_deposited' AS kind,  CAST(tokens AS HUGEINT) AS stake_delta, CAST(0 AS HUGEINT) AS pool_delta, CAST(0 AS HUGEINT) AS shares_delta, CAST(0 AS HUGEINT) AS thawing_delta FROM staking_legacy__stake_deposited
 UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_withdrawn', -CAST(tokens AS HUGEINT), 0, 0, 0 FROM staking_legacy__stake_withdrawn
 UNION ALL SELECT LOWER(indexer), CAST(block_timestamp AS BIGINT), block_number, block_number * 100000 + log_index, 'stake_slashed',   -CAST(tokens AS HUGEINT), 0, 0, 0 FROM staking_legacy__stake_slashed
@@ -218,14 +245,16 @@ registry AS (
       -- Horizon indexers register with the SubgraphService, whose event carries abi.encode(string url,
       -- string geohash, address rewardsDestination) as `data`: three head words, then each string as a
       -- length word and padded bytes. 14 of 184 indexers had no legacy registration and read url null.
-      UNION ALL SELECT sp, url, geohash, block_number, log_index FROM (
+      -- `geohash` is read from the same row one level up, where a LATERAL used to reach back for it.
+      UNION ALL SELECT sp, url, decode(from_hex(substr(h, 257 + ((ulen + 31) // 32) * 64 + 64, glen * 2))) AS geohash,
+                       block_number, log_index FROM (
         SELECT sp, block_number, log_index, ulen, h,
                decode(from_hex(substr(h, 257, ulen * 2))) AS url,
                CAST(('0x' || substr(h, 257 + ((ulen + 31) // 32) * 64, 64)) AS BIGINT) AS glen
         FROM (SELECT "serviceProvider" AS sp, block_number, log_index, substr(data, 3) AS h,
                      CAST(('0x' || substr(substr(data, 3), 193, 64)) AS BIGINT) AS ulen
               FROM subgraph_service__service_provider_registered)
-      ) x, LATERAL (SELECT decode(from_hex(substr(x.h, 257 + ((x.ulen + 31) // 32) * 64 + 64, x.glen * 2))) AS geohash) g
+      ) x
     )
   ) WHERE rn = 1
 ),
