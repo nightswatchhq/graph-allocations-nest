@@ -43,11 +43,14 @@ per_epoch AS (
 -- `l1BlockNumber` reaches it: 5,407 block fetches for all 266 boundaries, against the 459 million
 -- an indexed `blocks` table would cost (RFC-0036 §4.2 fetches every block in the window, by design).
 -- Every sampled boundary was checked against the contract: `currentEpoch()` returns E at the
--- boundary block and E-1 at the block before it. See nightswatchhq/nuthatch#1116.
+-- boundary block and E-1 at the block before it. See nightswatchhq/nuthatch#1116. From 1371 every
+-- row is checked that way, by `scripts/epoch-starts.sh`, which is the search.
 --
--- **This table is static and spans epochs 1105 to 1370.** Epochs outside it fall back to the observed
--- derivation below and are labelled as such, so the view degrades rather than lying. Extending it is
--- a rerun of the same search; making it self-maintaining is the `l1_block_number` work in #1116.
+-- **This table is static and spans epochs 1105 to 1401.** Epochs outside it fall back to the observed
+-- derivation below and are labelled as such, so the view degrades rather than lying. An epoch is
+-- about a day, so it goes stale daily; extending it is `scripts/epoch-starts.sh 1402 <current>`.
+-- It cannot maintain itself yet: nuthatch keeps `l1_block_number` only on the `blocks` table, which
+-- fetches every block in the window, and not on the log-bearing blocks this nest already reads.
 exact_starts(epoch, start_block) AS (
   VALUES
     (1105, 409124579),
@@ -315,7 +318,38 @@ exact_starts(epoch, start_block) AS (
     (1367, 499938326),
     (1368, 500283436),
     (1369, 500629598),
-    (1370, 500973867)
+    (1370, 500973867),
+    (1371, 501317707),
+    (1372, 501662756),
+    (1373, 502001069),
+    (1374, 502341541),
+    (1375, 502680841),
+    (1376, 503026063),
+    (1377, 503371274),
+    (1378, 503715985),
+    (1379, 504057934),
+    (1380, 504403776),
+    (1381, 504745243),
+    (1382, 505086706),
+    (1383, 505430543),
+    (1384, 505771243),
+    (1385, 506110514),
+    (1386, 506452890),
+    (1387, 506792546),
+    (1388, 507125771),
+    (1389, 507463555),
+    (1390, 507806359),
+    (1391, 508147452),
+    (1392, 508470078),
+    (1393, 508793859),
+    (1394, 509112776),
+    (1395, 509423357),
+    (1396, 509742026),
+    (1397, 510065486),
+    (1398, 510384469),
+    (1399, 510700115),
+    (1400, 511025871),
+    (1401, 511341461)
 ),
 -- **Every epoch in the exact range gets a row, observed or not.** The observed-only derivation could
 -- not do this: an epoch with no `AllocationCreated` and no `IndexingRewardsCollected` produced no
