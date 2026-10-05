@@ -9,6 +9,11 @@ rpc_urls = [
 schema_version = 1
 block_timestamps = true
 
+# EpochManager counts L1 blocks, and the log does not carry the L1 block. One row per block that
+# carries a row of this nest; views/50-lodestar-epochs.sql places every epoch from it.
+[extract]
+l1_blocks = true
+
 [[contracts]]
 alias = "subgraph_service"
 address = "0xb2bb92d0de618878e438b55d5846cfecd9301105"
