@@ -42,6 +42,7 @@ A self-hosted blockchain index. Query it locally; there is no third-party API.
 - `gns__subgraph_published` - SubgraphPublished(uint256,bytes32,uint32) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, subgraphID, subgraphDeploymentID, reserveRatio)
 - `graph_token__bridge_burned` - BridgeBurned(address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, account, amount)
 - `graph_token__bridge_minted` - BridgeMinted(address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, account, amount)
+- `l1_blocks` -  (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, l1_block_number)
 - `rewards__horizon_rewards_assigned` - HorizonRewardsAssigned(address,address,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationID, amount)
 - `rewards__parameter_updated` - ParameterUpdated(string) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, param)
 - `rewards__rewards_assigned` - RewardsAssigned(address,address,uint256,uint256) (block_number, block_hash, block_timestamp, tx_hash, log_index, address, _seq, indexer, allocationID, epoch, amount)

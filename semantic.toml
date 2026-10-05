@@ -485,6 +485,13 @@ reverted = "The `reverted` bool parameter - stored as exact text `'true'`/`'fals
 [table.issuance_per_block.footguns]
 bools = ["reverted"]
 
+[table.l1_blocks]
+description = "The Ethereum block each Arbitrum block carrying a row of this nest was sequenced against, from the header's l1BlockNumber. Join on block_number and block_hash. It is what EpochManager's block.number reads, so epoch_boundaries places every epoch from it."
+grain = "one row per block that carries a row in another table"
+
+[table.l1_blocks.columns]
+l1_block_number = "The header's l1BlockNumber: the L1 block this L2 block was sequenced against, and what block.number returns inside an Arbitrum contract."
+
 [table.max_thawing_period]
 description = "Result of the `max_thawing_period` call (selector `0x39514ad2`). (seeded from the ABI - edit semantic.toml to improve this)"
 grain = "one row per sampled block this declaration fires at"
@@ -1381,13 +1388,13 @@ reverted = "The `reverted` bool parameter - stored as exact text `'true'`/`'fals
 bools = ["reverted"]
 
 [view.epoch_boundaries]
-description = "The (epoch, L2 block) window each epoch occupies. For epochs 1105 to 1401 the start is EXACT: EpochManager counts L1 blocks, so epoch(l1) = 92 + (l1 - 16687937) // 7200 from epochLength/lastLengthUpdateBlock/lastLengthUpdateEpoch read at the tip, binary-searched to the first L2 block whose header l1BlockNumber reaches that L1 boundary. Verified against the contract: currentEpoch() returns E at the boundary block and E-1 at the block before it. Those rows carry boundary_source 'l1-exact' and unobserved_gap_blocks 0, and every epoch in that range gets a row whether or not anything was observed in it. Outside the range there is no exact table and start_block falls back to the FIRST OBSERVED Horizon event, which is at or after the true start, so events in that gap are attributed to the predecessor; those rows carry 'observed' and unobserved_gap_blocks is the width of that uncertainty in L2 blocks. Computing the boundary in L2 block space instead is wrong by a factor of ~48 and is the trap this view exists to avoid. See nightswatchhq/nuthatch#1116."
+description = "The (epoch, L2 block) window each epoch occupies, derived from l1_blocks with EpochManager's own arithmetic: within each EpochLengthUpdate segment, epoch(l1) = e0 + (l1 - anchor) // len, where the first update anchors at its own L1 block and each later one at the start of the epoch it fired in. On Arbitrum One that is epoch 1 at L1 16083151 with length 6646, then epoch 92 at L1 16687937 with length 7200. start_block is the first L2 block this nest holds in the epoch, not the chain's first L2 block of it, because only log-bearing blocks carry an L1 number here; bucketing by it is still exact, since L1 numbers never decrease along L2. start_l1_block is the exact L1 start, comparable with the network subgraph's startBlock. unobserved_gap_blocks is the L2 window before start_block where the chain's own first block of the epoch lies; no row of the nest is in it. boundary_source is 'l1' on every row. Computing the boundary in L2 block space is wrong by a factor of ~48. See nightswatchhq/nuthatch#1116 and #1882."
 
 [view.lodestar_delegations]
 description = "Delegation, undelegation and withdrawal events across Horizon staking and the pre-Horizon topics on the same proxy. The shape Lodestar's delegations cron and /api/delegation-events read. tokens is wei."
 
 [view.lodestar_epochs]
-description = "Per-epoch rewards, query fees and signal in Lodestar's SubgraphEpoch shape. Three of the value columns are defined to match the Graph Network subgraph's fields exactly rather than the raw event sums, and the difference is not cosmetic: signalled_tokens is gross signal MINUS curationTax and does NOT subtract burns (subtracting burns produced negative values in 81 of 266 epochs); query_fees_collected is tokensCollected minus tokensCurators minus a 1% protocol tax truncated PER EVENT, not on the epoch total. Boundaries are exact for epochs 1105 to 1401, derived from EpochManager's own L1 arithmetic and mapped into L2 block space (see epoch_boundaries), and observed from the currentEpoch the events carry outside that range. Every epoch except the newest is immutable at a pinned block. start_block/end_block are L2 blocks, so they are still not directly comparable with the subgraph's L1 EpochManager numbers even though they now derive from them. All amounts are wei."
+description = "Per-epoch rewards, query fees and signal in Lodestar's SubgraphEpoch shape. Three of the value columns are defined to match the Graph Network subgraph's fields exactly rather than the raw event sums, and the difference is not cosmetic: signalled_tokens is gross signal MINUS curationTax and does NOT subtract burns (subtracting burns produced negative values in 81 of 266 epochs); query_fees_collected is tokensCollected minus tokensCurators minus a 1% protocol tax truncated PER EVENT, not on the epoch total. Every row of the nest is placed in the epoch its block's L1 number says, by EpochManager's own arithmetic (see epoch_boundaries), for every epoch since the contract's first. Every epoch except the newest is immutable at a pinned block. start_block is the first L2 block this nest holds in the epoch and end_block the block before the next epoch's start_block, so they are not comparable with the subgraph's L1 startBlock; epoch_boundaries.start_l1_block is. All amounts are wei."
 
 [view.lodestar_indexer_daily]
 description = "lodestar_indexer_deployment_daily summed over deployments: one row per indexer per UTC day, the same columns and the same definitions. checks/indexer-daily-sums.sql holds both against the raw events."
