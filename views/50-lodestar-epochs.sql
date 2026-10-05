@@ -16,8 +16,9 @@
 -- An epoch's `start_block` is the first L2 block this nest holds in it, not the chain's first L2
 -- block of the epoch: only log-bearing blocks carry an L1 number here. Bucketing by it is still
 -- exact, because L1 numbers never decrease along L2, so every row of the nest falls in the epoch its
--- own block's L1 number says. `start_l1_block` is the epoch's exact L1 start, the number the network
--- subgraph reports as `startBlock`. See nightswatchhq/nuthatch#1116 and #1882.
+-- own block's L1 number says. `start_l1_block` and `end_l1_block` are the epoch's exact L1 range,
+-- the numbers the network subgraph reports as `startBlock` and `endBlock`. See
+-- nightswatchhq/nuthatch#1116 and #1882.
 CREATE VIEW epoch_boundaries AS
 WITH length_updates AS (
   SELECT CAST(u.epoch AS HUGEINT) AS e0, CAST(u."epochLength" AS HUGEINT) AS len,
@@ -40,10 +41,11 @@ ranges AS (
 per_epoch AS (
   SELECT r.e0 + (b.l1 - r.anchor) // r.len AS epoch,
          r.anchor + (b.l1 - r.anchor) // r.len * r.len AS start_l1_block,
+         r.len,
          MIN(b.block_number) AS first_seen, MAX(b.block_number) AS last_seen
   FROM (SELECT block_number, CAST(l1_block_number AS HUGEINT) AS l1 FROM l1_blocks) b
   JOIN ranges r ON b.l1 >= r.anchor AND (r.next_anchor IS NULL OR b.l1 < r.next_anchor)
-  GROUP BY 1, 2
+  GROUP BY 1, 2, 3
 )
 SELECT p.epoch,
        CAST(p.first_seen AS BIGINT) AS start_block,
@@ -58,6 +60,9 @@ SELECT p.epoch,
        -- own first block of the epoch lies. No row of this nest is in them, so nothing is misfiled.
        CAST(COALESCE(p.first_seen - LAG(p.last_seen) OVER (ORDER BY p.epoch) - 1, 0) AS BIGINT) AS unobserved_gap_blocks,
        CAST(p.start_l1_block AS BIGINT) AS start_l1_block,
+       -- A length change takes effect from the start of the epoch it fired in, so an epoch's own
+       -- segment length is its length, and this is the start of the next epoch less one.
+       CAST(p.start_l1_block + p.len - 1 AS BIGINT) AS end_l1_block,
        'l1' AS boundary_source
 FROM per_epoch p;
 
@@ -166,6 +171,8 @@ protocol_tax AS (
 SELECT b.epoch                                  AS id,
        b.start_block,
        b.end_block,
+       b.start_l1_block,
+       b.end_l1_block,
        COALESCE(s.signalled_tokens, 0)          AS signalled_tokens,
        COALESCE(d.stake_deposited, 0)           AS stake_deposited,
        COALESCE(p.taxed_query_fees, 0)          AS taxed_query_fees,

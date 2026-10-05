@@ -52,7 +52,7 @@ dec AS (
 ),
 epoch_len AS (
   SELECT CAST("epochLength" AS HUGEINT) AS epoch_length, CAST(epoch AS HUGEINT) AS last_length_update_epoch,
-         block_number AS last_length_update_block
+         block_number AS last_length_update_l2_block
   FROM epochs__epoch_length_update ORDER BY block_number DESC, log_index DESC LIMIT 1
 ),
 taxes AS (
@@ -68,7 +68,11 @@ SELECT (SELECT value        FROM dec WHERE name = 'delegation_ratio')        AS 
        (SELECT value        FROM dec WHERE name = 'max_thawing_period')      AS max_thawing_period_seconds,
        e.epoch_length,
        e.last_length_update_epoch,
-       e.last_length_update_block,
+       -- The contract's `lastLengthUpdateBlock()` is an L1 block: the start of the epoch the update fired in.
+       b.start_l1_block AS last_length_update_block,
+       e.last_length_update_l2_block,
        t.total_curation_tax,
        t.total_protocol_tax
-FROM epoch_len e, taxes t;
+FROM epoch_len e
+CROSS JOIN taxes t
+LEFT JOIN epoch_boundaries b ON b.epoch = e.last_length_update_epoch;
