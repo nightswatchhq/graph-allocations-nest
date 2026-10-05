@@ -46,9 +46,9 @@ per_epoch AS (
 -- boundary block and E-1 at the block before it. See nightswatchhq/nuthatch#1116. From 1371 every
 -- row is checked that way, by `scripts/epoch-starts.sh`, which is the search.
 --
--- **This table is static and spans epochs 1105 to 1401.** Epochs outside it fall back to the observed
+-- **This table is static and spans epochs 1105 to 1402.** Epochs outside it fall back to the observed
 -- derivation below and are labelled as such, so the view degrades rather than lying. An epoch is
--- about a day, so it goes stale daily; extending it is `scripts/epoch-starts.sh 1402 <current>`.
+-- about a day, so it goes stale daily; extending it is `scripts/epoch-starts.sh 1403 <current>`.
 -- It cannot maintain itself yet: nuthatch keeps `l1_block_number` only on the `blocks` table, which
 -- fetches every block in the window, and not on the log-bearing blocks this nest already reads.
 exact_starts(epoch, start_block) AS (
@@ -349,7 +349,8 @@ exact_starts(epoch, start_block) AS (
     (1398, 510384469),
     (1399, 510700115),
     (1400, 511025871),
-    (1401, 511341461)
+    (1401, 511341461),
+    (1402, 511653765)
 ),
 -- **Every epoch in the exact range gets a row, observed or not.** The observed-only derivation could
 -- not do this: an epoch with no `AllocationCreated` and no `IndexingRewardsCollected` produced no
