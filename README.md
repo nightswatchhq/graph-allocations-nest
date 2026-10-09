@@ -6,7 +6,7 @@ It exists to answer one question: **which subgraph deployments have curation sig
 and no indexer serving them?** Someone paid to have that data produced and nobody is producing it.
 
 ```sh
-nuthatch init --from https://github.com/nightswatchhq/graph-allocations-nest
+nuthatch init --from https://github.com/nuthatch-org/graph-allocations-nest
 nuthatch dev --dir graph-allocations-nest --rpc https://your-archive-rpc --state-rpc https://your-archive-rpc --window 81920 --seal-direct
 nuthatch sql --dir graph-allocations-nest "SELECT * FROM port_queue WHERE net_signal > 1000"
 ```
@@ -36,7 +36,7 @@ first figure would make the backfill 256 times longer.
   subgraph-only rows. The nest-only rows are `EscrowCollected` events where **`payer == collector`**,
   one address collecting from itself, which the subgraph drops. Two further nest rows are `Thaw` and
   `CancelThaw`, types the subgraph's entity does not model at all. See
-  nightswatchhq/nuthatch#1114.
+  nuthatch-org/nuthatch#1114.
 - **`lodestar_indexer_deployment_daily`** / **`lodestar_indexer_daily`** - rewards and query fees per indexer,
   deployment and UTC day, and the per-indexer sum. Rewards split between the indexer and its delegators; fees
   taken apart as `GraphPayments` takes them, so `fees_net` is what the indexer received (checked against 1,990
